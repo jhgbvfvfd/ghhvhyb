@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Kpzi Mod Manager</string>
+    <string name="tab_home">หน้าหลัก</string>
+    <string name="tab_catalog">คลังมอด</string>
+    <string name="tab_my_mods">มอดของฉัน</string>
+    <string name="tab_downloads">ดาวน์โหลด</string>
+    <string name="tab_log">Log</string>
+    <string name="tab_settings">ตั้งค่า</string>
+</resources>

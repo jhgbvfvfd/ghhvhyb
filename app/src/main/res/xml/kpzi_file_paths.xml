@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <external-files-path
+        name="external_save_backups"
+        path="SaveBackups/" />
+    <files-path
+        name="internal_save_backups"
+        path="SaveBackups/" />
+</paths>

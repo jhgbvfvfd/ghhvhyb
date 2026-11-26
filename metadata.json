@@ -1,0 +1,6 @@
+{
+  "name": "Kpzi Mod Manager",
+  "description": "Stardew Valley Android mod manager, Nexus Mods browser, SMAPI loader diagnostics, and safe ZIP installer.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
