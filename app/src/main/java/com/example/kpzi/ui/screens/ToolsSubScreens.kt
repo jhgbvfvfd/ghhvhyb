@@ -70,6 +70,8 @@ import com.example.kpzi.ui.components.IosSquircleIcon
 import com.example.kpzi.ui.components.KpziCard
 import com.example.kpzi.ui.components.StatusPill
 import com.example.kpzi.ui.components.formatFileSize
+import com.example.kpzi.ui.i18n.isEnglishLanguage
+import com.example.kpzi.ui.i18n.tr
 import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.theme.LocalKpziColors
 import java.text.SimpleDateFormat
@@ -87,7 +89,7 @@ private fun SubScreenTopBar(
         title = { Text(title, style = MaterialTheme.typography.titleLarge) },
         navigationIcon = {
             IconButton(onClick = onBack, modifier = Modifier.testTag("subscreen_back")) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "ย้อนกลับ")
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = tr("ย้อนกลับ", "Back"))
             }
         },
         actions = { actions() },
@@ -109,11 +111,12 @@ fun NexusAccountScreen(
     onOpenNexusKeyPage: () -> Unit,
 ) {
     val ext = LocalKpziColors.current
+    val isEnglish = isEnglishLanguage()
     var apiKeyInput by remember { mutableStateOf("") }
     var showKey by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = { SubScreenTopBar("บัญชี Nexus Mods", onBack) },
+        topBar = { SubScreenTopBar(tr("บัญชี Nexus Mods", "Nexus Mods Account"), onBack) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         LazyColumn(
@@ -132,11 +135,18 @@ fun NexusAccountScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = userProfile?.username ?: "ยังไม่ได้เชื่อมต่อบัญชี",
+                                text = userProfile?.username ?: tr("ยังไม่ได้เชื่อมต่อบัญชี", "Account not connected"),
                                 style = MaterialTheme.typography.titleMedium,
                             )
                             Text(
-                                text = if (userProfile != null) "User ID: ${userProfile.userId}" else "เก็บ API Key ด้วย Android KeyStore AES-256",
+                                text = if (userProfile != null) {
+                                    "User ID: ${userProfile.userId}"
+                                } else {
+                                    tr(
+                                        "เก็บ API Key ด้วย Android KeyStore AES-256",
+                                        "API Key stored with Android KeyStore AES-256",
+                                    )
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = ext.mutedText,
                             )
@@ -149,7 +159,7 @@ fun NexusAccountScreen(
                             )
                         } else {
                             StatusPill(
-                                text = "ออฟไลน์",
+                                text = tr("ออฟไลน์", "Offline"),
                                 containerColor = ext.warningContainer,
                                 contentColor = ext.warning,
                             )
@@ -164,7 +174,7 @@ fun NexusAccountScreen(
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = ext.error),
                             border = BorderStroke(1.dp, ext.error.copy(alpha = 0.4f)),
                         ) {
-                            Text("ตัดการเชื่อมต่อและล้าง Key")
+                            Text(tr("ตัดการเชื่อมต่อและล้าง Key", "Disconnect & Clear Key"))
                         }
                     }
                 }
@@ -172,10 +182,13 @@ fun NexusAccountScreen(
 
             item {
                 KpziCard(modifier = Modifier.fillMaxWidth()) {
-                    Text("เชื่อมต่อด้วย Personal API Key", style = MaterialTheme.typography.titleSmall)
+                    Text(tr("เชื่อมต่อด้วย Personal API Key", "Connect with Personal API Key"), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "ระบบไม่ฝัง API Key ของผู้พัฒนาใน APK และเก็บรหัสของคุณใน KeyStore ที่เข้ารหัสเฉพาะเครื่องนี้",
+                        text = tr(
+                            "ระบบไม่ฝัง API Key ของผู้พัฒนาใน APK และเก็บรหัสของคุณใน KeyStore ที่เข้ารหัสเฉพาะเครื่องนี้",
+                            "No developer API key is embedded in the APK. Your personal key is encrypted in the device KeyStore.",
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = ext.mutedText,
                     )
@@ -192,7 +205,7 @@ fun NexusAccountScreen(
                             IconButton(onClick = { showKey = !showKey }) {
                                 Icon(
                                     imageVector = if (showKey) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                                    contentDescription = "แสดงหรือซ่อน Key",
+                                    contentDescription = tr("แสดงหรือซ่อน Key", "Show or hide API key"),
                                 )
                             }
                         },
@@ -218,7 +231,7 @@ fun NexusAccountScreen(
                             if (isValidating) {
                                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
                             } else {
-                                Text("ตรวจสอบและเชื่อมต่อ")
+                                Text(tr("ตรวจสอบและเชื่อมต่อ", "Verify & Connect"))
                             }
                         }
                         OutlinedButton(
@@ -229,7 +242,7 @@ fun NexusAccountScreen(
                         ) {
                             Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("รับ Key")
+                            Text(tr("รับ Key", "Get Key"))
                         }
                     }
                 }
@@ -243,21 +256,24 @@ fun NexusAccountScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("โควตา API (จาก Header จริง)", style = MaterialTheme.typography.titleSmall)
+                        Text(tr("โควตา API (จาก Header จริง)", "API Quota (Live Headers)"), style = MaterialTheme.typography.titleSmall)
                         StatusPill(
-                            text = quotaState.status.labelTh,
+                            text = quotaState.status.label(isEnglish),
                             containerColor = ext.infoContainer,
                             contentColor = ext.info,
                         )
                     }
                     Spacer(Modifier.height(8.dp))
                     QuotaLine("Daily Remaining / Limit", "${quotaState.dailyRemaining ?: "-"} / ${quotaState.dailyLimit ?: "-"}")
-                    QuotaLine("Daily Reset", quotaState.dailyReset ?: "รอข้อมูลจากเซิร์ฟเวอร์")
+                    QuotaLine("Daily Reset", quotaState.dailyReset ?: tr("รอข้อมูลจากเซิร์ฟเวอร์", "Waiting for server data"))
                     HorizontalDivider(Modifier.padding(vertical = 6.dp), color = ext.border)
                     QuotaLine("Hourly Remaining / Limit", "${quotaState.hourlyRemaining ?: "-"} / ${quotaState.hourlyLimit ?: "-"}")
-                    QuotaLine("Hourly Reset", quotaState.hourlyReset ?: "รอข้อมูลจากเซิร์ฟเวอร์")
+                    QuotaLine("Hourly Reset", quotaState.hourlyReset ?: tr("รอข้อมูลจากเซิร์ฟเวอร์", "Waiting for server data"))
                     if (quotaState.retryAfterSeconds != null) {
-                        QuotaLine("Retry-After", "${quotaState.retryAfterSeconds} วินาที")
+                        QuotaLine(
+                            "Retry-After",
+                            tr("${quotaState.retryAfterSeconds} วินาที", "${quotaState.retryAfterSeconds} sec"),
+                        )
                     }
                 }
             }
@@ -296,9 +312,9 @@ fun SmapiManagerScreen(
     val ext = LocalKpziColors.current
     Scaffold(
         topBar = {
-            SubScreenTopBar("จัดการ SMAPI & ตัวตรวจจับเกม", onBack) {
+            SubScreenTopBar(tr("จัดการ SMAPI & ตัวตรวจจับเกม", "SMAPI & Game Detector"), onBack) {
                 IconButton(onClick = onRefresh) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = "สแกนใหม่")
+                    Icon(Icons.Rounded.Refresh, contentDescription = tr("สแกนใหม่", "Rescan"))
                 }
             }
         },
@@ -316,18 +332,30 @@ fun SmapiManagerScreen(
                     Text("Game Detection Engine", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(6.dp))
                     if (detection == null) {
-                        Text("กำลังสแกนระบบ...", style = MaterialTheme.typography.bodySmall)
+                        Text(tr("กำลังสแกนระบบ...", "Scanning system..."), style = MaterialTheme.typography.bodySmall)
                     } else {
-                        QuotaLine("สถานะเกม", if (detection.isGameInstalled) "ติดตั้งแล้ว" else "ไม่พบตัวเกม")
+                        QuotaLine(
+                            tr("สถานะเกม", "Game Status"),
+                            if (detection.isGameInstalled) tr("ติดตั้งแล้ว", "Installed") else tr("ไม่พบตัวเกม", "Not Found"),
+                        )
                         QuotaLine("Package Name", detection.packageName ?: "-")
                         QuotaLine("Version Name", detection.versionName ?: "-")
                         QuotaLine("Version Code", detection.versionCode?.toString() ?: "-")
                         QuotaLine("ABI", detection.supportedAbis.joinToString())
-                        QuotaLine("ARM64", if (detection.isArm64Supported) "รองรับ" else "ไม่รองรับ")
+                        QuotaLine(
+                            "ARM64",
+                            if (detection.isArm64Supported) tr("รองรับ", "Supported") else tr("ไม่รองรับ", "Unsupported"),
+                        )
                         QuotaLine("Android", detection.androidVersionLabel)
-                        QuotaLine("พื้นที่ว่าง", "${formatFileSize(detection.availableStorageBytes)} / ${formatFileSize(detection.totalStorageBytes)}")
+                        QuotaLine(
+                            tr("พื้นที่ว่าง", "Free Storage"),
+                            "${formatFileSize(detection.availableStorageBytes)} / ${formatFileSize(detection.totalStorageBytes)}",
+                        )
                         QuotaLine("Runtime", detection.runtimeType)
-                        QuotaLine("Split APKs", "${detection.splitApkPaths.size} ไฟล์")
+                        QuotaLine(
+                            "Split APKs",
+                            tr("${detection.splitApkPaths.size} ไฟล์", "${detection.splitApkPaths.size} files"),
+                        )
                     }
                 }
             }
@@ -347,7 +375,10 @@ fun SmapiManagerScreen(
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "สถานะปัจจุบัน: ${smapiStatus.gameLoaderStateLabel}",
+                        text = tr(
+                            "สถานะปัจจุบัน: ${smapiStatus.gameLoaderStateLabel}",
+                            "Current Status: ${smapiStatus.gameLoaderStateLabel}",
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = ext.mutedText,
                     )
@@ -356,7 +387,7 @@ fun SmapiManagerScreen(
 
             if (report != null) {
                 item {
-                    Text("สถาปัตยกรรม Game Loader", style = MaterialTheme.typography.titleMedium)
+                    Text(tr("สถาปัตยกรรม Game Loader", "Game Loader Architecture"), style = MaterialTheme.typography.titleMedium)
                 }
                 items(report.diagnostics, key = { it.moduleName }) { diag ->
                     KpziCard(modifier = Modifier.fillMaxWidth()) {
@@ -407,10 +438,11 @@ fun SaveBackupScreen(
     onBack: () -> Unit,
 ) {
     val ext = LocalKpziColors.current
+    val isEnglish = isEnglishLanguage()
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
 
     Scaffold(
-        topBar = { SubScreenTopBar("สำรองข้อมูลเป็นไฟล์ ZIP", onBack) },
+        topBar = { SubScreenTopBar(tr("สำรองข้อมูลเป็นไฟล์ ZIP", "ZIP Backups & Restore"), onBack) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         LazyColumn(
@@ -435,9 +467,12 @@ fun SaveBackupScreen(
                             cornerRadius = 12.dp,
                         )
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("สำรองมอดและบันทึกเป็นไฟล์ ZIP", style = MaterialTheme.typography.titleSmall)
+                            Text(tr("สำรองมอดและบันทึกเป็นไฟล์ ZIP", "Backup Mods & Logs as ZIP"), style = MaterialTheme.typography.titleSmall)
                             Text(
-                                text = "รวมมอดที่ติดตั้งทั้งหมด ($installedModCount ตัว) และ Log ระบบเป็นไฟล์ .zip ให้ดาวน์โหลดเก็บไว้",
+                                text = tr(
+                                    "รวมมอดที่ติดตั้งทั้งหมด ($installedModCount ตัว) และ Log ระบบเป็นไฟล์ .zip ให้ดาวน์โหลดเก็บไว้",
+                                    "Bundle all installed mods ($installedModCount) and system logs into a downloadable .zip archive.",
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = ext.mutedText,
                             )
@@ -460,11 +495,11 @@ fun SaveBackupScreen(
                                 color = MaterialTheme.colorScheme.onPrimary,
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("กำลังบีบอัดไฟล์ ZIP...")
+                            Text(tr("กำลังบีบอัดไฟล์ ZIP...", "Compressing ZIP archive..."))
                         } else {
                             Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("สร้างและดาวน์โหลดไฟล์ ZIP")
+                            Text(tr("สร้างและดาวน์โหลดไฟล์ ZIP", "Create & Export ZIP"))
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -479,7 +514,7 @@ fun SaveBackupScreen(
                     ) {
                         Icon(Icons.Rounded.UploadFile, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("นำเข้าไฟล์ ZIP สำรองเพื่อกู้คืนมอด")
+                        Text(tr("นำเข้าไฟล์ ZIP สำรองเพื่อกู้คืนมอด", "Import Backup ZIP to Restore Mods"))
                     }
                 }
             }
@@ -499,9 +534,12 @@ fun SaveBackupScreen(
                             cornerRadius = 12.dp,
                         )
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("สำรองโฟลเดอร์เซฟเกม (SAF)", style = MaterialTheme.typography.titleSmall)
+                            Text(tr("สำรองโฟลเดอร์เซฟเกม (SAF)", "Backup Game Saves Folder (SAF)"), style = MaterialTheme.typography.titleSmall)
                             Text(
-                                text = "เลือกโฟลเดอร์เซฟของ Stardew Valley ผ่านระบบ Android เพื่อบีบอัดเป็น ZIP แล้วดาวน์โหลด",
+                                text = tr(
+                                    "เลือกโฟลเดอร์เซฟของ Stardew Valley ผ่านระบบ Android เพื่อบีบอัดเป็น ZIP แล้วดาวน์โหลด",
+                                    "Select your Stardew Valley saves folder via Android SAF to compress and export as ZIP.",
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = ext.mutedText,
                             )
@@ -520,14 +558,14 @@ fun SaveBackupScreen(
                     ) {
                         Icon(Icons.Rounded.Backup, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("เลือกโฟลเดอร์เซฟและสำรองเป็น ZIP")
+                        Text(tr("เลือกโฟลเดอร์เซฟและสำรองเป็น ZIP", "Select Saves Folder & Export ZIP"))
                     }
                 }
             }
 
             item {
                 Text(
-                    text = "ไฟล์ ZIP สำรองทั้งหมด (${backups.size})",
+                    text = tr("ไฟล์ ZIP สำรองทั้งหมด (${backups.size})", "All Backup ZIPs (${backups.size})"),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -537,7 +575,10 @@ fun SaveBackupScreen(
                 item {
                     KpziCard(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            text = "ยังไม่มีไฟล์สำรอง ZIP ในเครื่อง กดปุ่มด้านบนเพื่อสร้างและดาวน์โหลดได้เลย",
+                            text = tr(
+                                "ยังไม่มีไฟล์สำรอง ZIP ในเครื่อง กดปุ่มด้านบนเพื่อสร้างและดาวน์โหลดได้เลย",
+                                "No local ZIP backups yet. Tap above to create and export one.",
+                            ),
                             style = MaterialTheme.typography.bodyMedium,
                             color = ext.mutedText,
                         )
@@ -569,7 +610,7 @@ fun SaveBackupScreen(
                                     )
                                 }
                                 StatusPill(
-                                    text = backup.category.labelTh,
+                                    text = backup.category.label(isEnglish),
                                     containerColor = if (backup.category == BackupCategory.MODS_AND_CONFIG) {
                                         MaterialTheme.colorScheme.primaryContainer
                                     } else {
@@ -599,7 +640,7 @@ fun SaveBackupScreen(
                                 ) {
                                     Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(Modifier.width(5.dp))
-                                    Text("ดาวน์โหลด ZIP", style = MaterialTheme.typography.labelMedium)
+                                    Text(tr("ดาวน์โหลด ZIP", "Export ZIP"), style = MaterialTheme.typography.labelMedium)
                                 }
                                 IconButton(
                                     onClick = { onShareBackupZip(backup) },

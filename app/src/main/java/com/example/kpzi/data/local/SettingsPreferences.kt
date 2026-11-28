@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.kpzi.ui.i18n.AppLanguage
 import com.example.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -15,6 +16,7 @@ private val Context.kpziDataStore by preferencesDataStore(name = "kpzi_settings"
 
 data class UserSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val appLanguage: AppLanguage = AppLanguage.THAI,
     val safModsUri: String? = null,
     val safSavesUri: String? = null,
     val safLogUri: String? = null,
@@ -42,9 +44,12 @@ class SettingsPreferences(private val context: Context) {
     val settingsFlow: Flow<UserSettings> = context.kpziDataStore.data.map { prefs ->
         val themeStr = prefs[KEY_THEME_MODE] ?: ThemeMode.SYSTEM.name
         val theme = runCatching { ThemeMode.valueOf(themeStr) }.getOrDefault(ThemeMode.SYSTEM)
+        val langStr = prefs[KEY_APP_LANGUAGE] ?: AppLanguage.THAI.name
+        val language = runCatching { AppLanguage.valueOf(langStr) }.getOrDefault(AppLanguage.THAI)
         val activeStart = prefs[KEY_ACTIVE_PLAYTIME_START_MS]?.takeIf { it > 0L }
         UserSettings(
             themeMode = theme,
+            appLanguage = language,
             safModsUri = prefs[KEY_SAF_MODS_URI],
             safSavesUri = prefs[KEY_SAF_SAVES_URI],
             safLogUri = prefs[KEY_SAF_LOG_URI],
@@ -61,6 +66,10 @@ class SettingsPreferences(private val context: Context) {
 
     suspend fun setThemeMode(mode: ThemeMode) {
         context.kpziDataStore.edit { it[KEY_THEME_MODE] = mode.name }
+    }
+
+    suspend fun setAppLanguage(language: AppLanguage) {
+        context.kpziDataStore.edit { it[KEY_APP_LANGUAGE] = language.name }
     }
 
     suspend fun setSafModsUri(uri: String?) {
@@ -158,6 +167,7 @@ class SettingsPreferences(private val context: Context) {
 
     private companion object {
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
+        val KEY_APP_LANGUAGE = stringPreferencesKey("app_language")
         val KEY_SAF_MODS_URI = stringPreferencesKey("saf_mods_uri")
         val KEY_SAF_SAVES_URI = stringPreferencesKey("saf_saves_uri")
         val KEY_SAF_LOG_URI = stringPreferencesKey("saf_log_uri")

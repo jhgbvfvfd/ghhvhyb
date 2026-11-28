@@ -33,15 +33,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +53,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -82,17 +81,22 @@ import androidx.navigation.navArgument
 import com.example.kpzi.KpziViewModel
 import com.example.kpzi.UiEvent
 import com.example.kpzi.domain.model.BackupCategory
-import com.example.kpzi.domain.model.DownloadStatus
 import com.example.kpzi.domain.model.SaveBackupInfo
 import com.example.kpzi.ui.components.KpziInstallSuccessDialog
 import com.example.kpzi.ui.components.KpziModInstallConfirmDialog
 import com.example.kpzi.ui.components.KpziSplashOverlay
+import com.example.kpzi.ui.components.KpziZipPasswordDialog
+import com.example.kpzi.ui.i18n.AppLanguage
+import com.example.kpzi.ui.i18n.LocalAppLanguage
+import com.example.kpzi.ui.i18n.isEnglishLanguage
+import com.example.kpzi.ui.i18n.localize
+import com.example.kpzi.ui.i18n.tr
 import com.example.kpzi.ui.screens.CatalogScreen
 import com.example.kpzi.ui.screens.ConflictDetectionScreen
-import com.example.kpzi.ui.screens.DownloadsScreen
 import com.example.kpzi.ui.screens.HomeScreen
 import com.example.kpzi.ui.screens.LogsScreen
 import com.example.kpzi.ui.screens.ModDetailScreen
+import com.example.kpzi.ui.screens.MultiplayerScreen
 import com.example.kpzi.ui.screens.MyModsScreen
 import com.example.kpzi.ui.screens.NexusAccountScreen
 import com.example.kpzi.ui.screens.SaveBackupScreen
@@ -105,7 +109,7 @@ object KpziRoutes {
     const val HOME = "home"
     const val CATALOG = "catalog"
     const val MY_MODS = "my_mods"
-    const val DOWNLOADS = "downloads"
+    const val MULTIPLAYER = "multiplayer"
     const val SETTINGS = "settings"
     const val MOD_DETAIL = "mod_detail/{modId}"
     const val NEXUS_ACCOUNT = "nexus_account"
@@ -119,17 +123,20 @@ object KpziRoutes {
 
 private data class BottomTab(
     val route: String,
-    val label: String,
+    val labelTh: String,
+    val labelEn: String,
     val icon: ImageVector,
-)
+) {
+    fun label(isEnglish: Boolean): String = if (isEnglish) labelEn else labelTh
+}
 
 private val mainTabs = listOf(
-    BottomTab(KpziRoutes.HOME, "หน้าหลัก", Icons.Rounded.Home),
-    BottomTab(KpziRoutes.CATALOG, "คลังมอด", Icons.Rounded.Explore),
-    BottomTab(KpziRoutes.MY_MODS, "มอดของฉัน", Icons.Rounded.Inventory2),
-    BottomTab(KpziRoutes.DOWNLOADS, "ดาวน์โหลด", Icons.Rounded.CloudDownload),
-    BottomTab(KpziRoutes.LOG_VIEWER, "Log", Icons.Rounded.ReceiptLong),
-    BottomTab(KpziRoutes.SETTINGS, "ตั้งค่า", Icons.Rounded.Settings),
+    BottomTab(KpziRoutes.HOME, "หน้าหลัก", "Home", Icons.Rounded.Home),
+    BottomTab(KpziRoutes.CATALOG, "คลังมอด", "Catalog", Icons.Rounded.Explore),
+    BottomTab(KpziRoutes.MY_MODS, "มอดของฉัน", "My Mods", Icons.Rounded.Inventory2),
+    BottomTab(KpziRoutes.MULTIPLAYER, "เล่นด้วยกัน", "Co-op", Icons.Rounded.SportsEsports),
+    BottomTab(KpziRoutes.LOG_VIEWER, "Log", "Logs", Icons.Rounded.ReceiptLong),
+    BottomTab(KpziRoutes.SETTINGS, "ตั้งค่า", "Settings", Icons.Rounded.Settings),
 )
 
 @Composable
@@ -140,7 +147,6 @@ fun KpziApp(viewModel: KpziViewModel) {
     val smapiStatus by viewModel.smapiStatus.collectAsStateWithLifecycle()
     val preLaunchReport by viewModel.preLaunchReport.collectAsStateWithLifecycle()
     val installedMods by viewModel.installedMods.collectAsStateWithLifecycle()
-    val downloads by viewModel.downloads.collectAsStateWithLifecycle()
     val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
     val quotaState by viewModel.quotaState.collectAsStateWithLifecycle()
     val isValidatingAccount by viewModel.isValidatingAccount.collectAsStateWithLifecycle()
@@ -149,6 +155,7 @@ fun KpziApp(viewModel: KpziViewModel) {
     val catalogState by viewModel.catalogState.collectAsStateWithLifecycle()
     val modDetailState by viewModel.modDetailState.collectAsStateWithLifecycle()
     val pendingInstall by viewModel.pendingInstall.collectAsStateWithLifecycle()
+    val pendingZipPassword by viewModel.pendingZipPassword.collectAsStateWithLifecycle()
     val installedSuccessMod by viewModel.installedSuccessMod.collectAsStateWithLifecycle()
     val saveBackups by viewModel.saveBackups.collectAsStateWithLifecycle()
     val isCreatingBackup by viewModel.isCreatingBackup.collectAsStateWithLifecycle()
@@ -159,6 +166,11 @@ fun KpziApp(viewModel: KpziViewModel) {
     val isScanningConflicts by viewModel.isScanningConflicts.collectAsStateWithLifecycle()
     val conflictCount = conflictReport?.issues?.size ?: 0
     val pendingNavigateTab by viewModel.pendingNavigateTab.collectAsStateWithLifecycle()
+    val multiplayerSnapshot by viewModel.multiplayerSnapshot.collectAsStateWithLifecycle()
+    val favoriteRoomIds by viewModel.favoriteRoomIds.collectAsStateWithLifecycle()
+    val coopHistory by viewModel.coopHistory.collectAsStateWithLifecycle()
+    val pendingJoinPasswordRoom by viewModel.pendingJoinPasswordRoom.collectAsStateWithLifecycle()
+    val joinPasswordError by viewModel.joinPasswordError.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val navController = rememberNavController()
@@ -257,7 +269,13 @@ fun KpziApp(viewModel: KpziViewModel) {
     ) { granted ->
         notificationsAllowed = granted && NotificationManagerCompat.from(context).areNotificationsEnabled()
         if (!granted) {
-            viewModel.showUiMessage("หากต้องการแถบแจ้งเตือนเวลาเล่นและแจ้งเตือนดาวน์โหลด กรุณาอนุญาตการแจ้งเตือนในตั้งค่า")
+            viewModel.showUiMessage(
+                localize(
+                    settings.appLanguage,
+                    "หากต้องการแถบแจ้งเตือนเวลาเล่นและแจ้งเตือนดาวน์โหลด กรุณาอนุญาตการแจ้งเตือนในตั้งค่า",
+                    "To show playtime and download notifications, please enable notifications in Settings",
+                ),
+            )
         }
     }
 
@@ -270,7 +288,8 @@ fun KpziApp(viewModel: KpziViewModel) {
     LaunchedEffect(pendingNavigateTab) {
         val target = pendingNavigateTab ?: return@LaunchedEffect
         val route = when (target) {
-            "downloads" -> KpziRoutes.DOWNLOADS
+            "downloads", "my_mods" -> KpziRoutes.MY_MODS
+            "multiplayer", "coop" -> KpziRoutes.MULTIPLAYER
             "home" -> KpziRoutes.HOME
             else -> target
         }
@@ -292,7 +311,13 @@ fun KpziApp(viewModel: KpziViewModel) {
                     runCatching {
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(event.url)))
                     }.onFailure {
-                        snackbarHostState.showSnackbar("ไม่พบเบราว์เซอร์สำหรับเปิดลิงก์: ${event.url}")
+                        snackbarHostState.showSnackbar(
+                            localize(
+                                settings.appLanguage,
+                                "ไม่พบเบราว์เซอร์สำหรับเปิดลิงก์: ${event.url}",
+                                "No browser found to open link: ${event.url}",
+                            ),
+                        )
                     }
                 }
                 is UiEvent.LaunchBlocked -> launchBlockedReason = event.reason
@@ -307,15 +332,14 @@ fun KpziApp(viewModel: KpziViewModel) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val showMainNav = currentRoute in mainTabs.map { it.route }
-    val activeDownloadCount = downloads.count {
-        it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.QUEUED
-    }
 
     KpziTheme(
         themeMode = settings.themeMode,
         onThemeModeChange = viewModel::setThemeMode,
     ) {
+        CompositionLocalProvider(LocalAppLanguage provides settings.appLanguage) {
         val ext = LocalKpziColors.current
+        val isEnglish = isEnglishLanguage()
 
         Box(modifier = Modifier.fillMaxSize()) {
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -330,7 +354,6 @@ fun KpziApp(viewModel: KpziViewModel) {
                             IosBottomTabBar(
                                 tabs = mainTabs,
                                 currentHierarchy = navBackStackEntry?.destination?.hierarchy,
-                                activeDownloadCount = activeDownloadCount,
                                 borderColor = ext.border,
                                 mutedColor = ext.mutedText,
                                 onSelectTab = { route ->
@@ -372,9 +395,9 @@ fun KpziApp(viewModel: KpziViewModel) {
                                             }
                                         },
                                         icon = {
-                                            Icon(tab.icon, contentDescription = tab.label)
+                                            Icon(tab.icon, contentDescription = tab.label(isEnglish))
                                         },
-                                        label = { Text(tab.label, style = MaterialTheme.typography.labelSmall) },
+                                        label = { Text(tab.label(isEnglish), style = MaterialTheme.typography.labelSmall) },
                                     )
                                 }
                             }
@@ -395,6 +418,7 @@ fun KpziApp(viewModel: KpziViewModel) {
                                     HomeScreen(
                                         detection = detection,
                                         smapiStatus = smapiStatus,
+                                        installedMods = installedMods,
                                         userProfile = userProfile,
                                         totalPlaytimeSeconds = settings.totalPlaytimeSeconds,
                                         activePlaytimeStartMs = settings.activePlaytimeStartMs,
@@ -409,8 +433,11 @@ fun KpziApp(viewModel: KpziViewModel) {
                                             }
                                             viewModel.launchGame()
                                         },
+                                        onOpenSmapiManager = { navController.navigate(KpziRoutes.SMAPI_MANAGER) },
+                                        onRefreshStats = viewModel::refreshSystemDiagnostics,
                                         onOpenAccount = { navController.navigate(KpziRoutes.NEXUS_ACCOUNT) },
                                         onResetPlayStats = viewModel::resetPlayStatistics,
+                                        onToggleLanguage = viewModel::toggleAppLanguage,
                                     )
                                 }
 
@@ -437,17 +464,28 @@ fun KpziApp(viewModel: KpziViewModel) {
                                             zipPickerLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "*/*"))
                                         },
                                         onImportFolder = { folderPickerLauncher.launch(null) },
+                                        totalDeviceStorageBytes = detection?.totalStorageBytes,
                                     )
                                 }
 
-                                composable(KpziRoutes.DOWNLOADS) {
-                                    DownloadsScreen(
-                                        downloads = downloads,
-                                        onPause = viewModel::pauseDownload,
-                                        onResumeOrRetry = viewModel::resumeDownload,
-                                        onCancel = viewModel::cancelDownload,
-                                        onInstallCompleted = viewModel::installFromCompletedDownload,
-                                        onRemoveHistory = viewModel::removeDownloadRecord,
+                                composable(KpziRoutes.MULTIPLAYER) {
+                                    MultiplayerScreen(
+                                        snapshot = multiplayerSnapshot,
+                                        favoriteRoomIds = favoriteRoomIds,
+                                        coopHistory = coopHistory,
+                                        userProfile = userProfile,
+                                        localGameVersion = detection?.versionName ?: "",
+                                        pendingPasswordRoom = pendingJoinPasswordRoom,
+                                        joinPasswordError = joinPasswordError,
+                                        onRefreshRooms = viewModel::refreshMultiplayerRooms,
+                                        onHostRoom = viewModel::hostMultiplayerRoom,
+                                        onStopHosting = viewModel::stopHostingMultiplayerRoom,
+                                        onJoinRoom = viewModel::joinMultiplayerRoom,
+                                        onJoinByCode = viewModel::joinMultiplayerByCode,
+                                        onDismissPasswordPrompt = viewModel::dismissJoinPasswordPrompt,
+                                        onToggleFavorite = viewModel::toggleFavoriteRoom,
+                                        onClearHistory = viewModel::clearCoopHistory,
+                                        onShowMessage = viewModel::showUiMessage,
                                     )
                                 }
 
@@ -489,6 +527,7 @@ fun KpziApp(viewModel: KpziViewModel) {
                                             }
                                         },
                                         onThemeModeChange = viewModel::setThemeMode,
+                                        onLanguageChange = viewModel::setAppLanguage,
                                     )
                                 }
 
@@ -573,7 +612,12 @@ fun KpziApp(viewModel: KpziViewModel) {
                                                     putExtra(Intent.EXTRA_SUBJECT, backup.fileName)
                                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                                 }
-                                                context.startActivity(Intent.createChooser(shareIntent, "แชร์ไฟล์สำรอง ZIP"))
+                                                context.startActivity(
+                                                    Intent.createChooser(
+                                                        shareIntent,
+                                                        localize(settings.appLanguage, "แชร์ไฟล์สำรอง ZIP", "Share Backup ZIP"),
+                                                    ),
+                                                )
                                             }.onFailure {
                                                 pendingExportBackup = backup
                                                 exportBackupZipLauncher.launch(backup.fileName)
@@ -606,7 +650,12 @@ fun KpziApp(viewModel: KpziViewModel) {
                                                 putExtra(Intent.EXTRA_SUBJECT, "Kpzi Mod Manager Logs")
                                                 putExtra(Intent.EXTRA_TEXT, text)
                                             }
-                                            context.startActivity(Intent.createChooser(sendIntent, "แชร์บันทึก Log"))
+                                                context.startActivity(
+                                                    Intent.createChooser(
+                                                        sendIntent,
+                                                        localize(settings.appLanguage, "แชร์บันทึก Log", "Share Logs"),
+                                                    ),
+                                                )
                                         },
                                         onClearLogs = viewModel::clearLogs,
                                         onCopyMessage = viewModel::showUiMessage,
@@ -638,6 +687,14 @@ fun KpziApp(viewModel: KpziViewModel) {
                 }
             }
 
+            pendingZipPassword?.let { zipPrompt ->
+                KpziZipPasswordDialog(
+                    pending = zipPrompt,
+                    onSubmit = viewModel::submitZipPassword,
+                    onDismiss = viewModel::cancelZipPassword,
+                )
+            }
+
             pendingInstall?.let { pending ->
                 KpziModInstallConfirmDialog(
                     pending = pending,
@@ -663,25 +720,31 @@ fun KpziApp(viewModel: KpziViewModel) {
                 AlertDialog(
                     onDismissRequest = { launchBlockedReason = null },
                     containerColor = MaterialTheme.colorScheme.surface,
-                    title = { Text("ยังไม่สามารถเปิดเกมได้", style = MaterialTheme.typography.titleLarge) },
+                    title = {
+                        Text(
+                            tr("ยังไม่สามารถเปิดเกมได้", "Cannot Launch Game Yet"),
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                    },
                     text = { Text(reason, style = MaterialTheme.typography.bodyMedium) },
                     confirmButton = {
                         TextButton(onClick = {
                             launchBlockedReason = null
                             navController.navigate(KpziRoutes.SMAPI_MANAGER)
                         }) {
-                            Text("ตรวจสอบสถานะเกม")
+                            Text(tr("ตรวจสอบสถานะเกม", "Check Game Status"))
                         }
                     },
                     dismissButton = {
                         TextButton(onClick = { launchBlockedReason = null }) {
-                            Text("ปิด")
+                            Text(tr("ปิด", "Close"))
                         }
                     },
                 )
             }
 
             KpziSplashOverlay(visible = isSplashVisible)
+        }
         }
     }
 }
@@ -690,11 +753,11 @@ fun KpziApp(viewModel: KpziViewModel) {
 private fun IosBottomTabBar(
     tabs: List<BottomTab>,
     currentHierarchy: Sequence<androidx.navigation.NavDestination>?,
-    activeDownloadCount: Int,
     borderColor: androidx.compose.ui.graphics.Color,
     mutedColor: androidx.compose.ui.graphics.Color,
     onSelectTab: (String) -> Unit,
 ) {
+    val isEnglish = isEnglishLanguage()
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
@@ -712,6 +775,7 @@ private fun IosBottomTabBar(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 tabs.forEach { tab ->
+                    val tabLabel = tab.label(isEnglish)
                     val selected = currentHierarchy?.any { it.route == tab.route } == true
                     val scale by animateFloatAsState(
                         targetValue = if (selected) 1.05f else 1.0f,
@@ -744,26 +808,15 @@ private fun IosBottomTabBar(
                                 .padding(horizontal = 10.dp, vertical = 4.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            if (tab.route == KpziRoutes.DOWNLOADS && activeDownloadCount > 0) {
-                                BadgedBox(badge = { Badge { Text(activeDownloadCount.toString()) } }) {
-                                    Icon(
-                                        imageVector = tab.icon,
-                                        contentDescription = tab.label,
-                                        tint = tint,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-                            } else {
-                                Icon(
-                                    imageVector = tab.icon,
-                                    contentDescription = tab.label,
-                                    tint = tint,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
+                            Icon(
+                                imageVector = tab.icon,
+                                contentDescription = tabLabel,
+                                tint = tint,
+                                modifier = Modifier.size(20.dp),
+                            )
                         }
                         Text(
-                            text = tab.label,
+                            text = tabLabel,
                             fontSize = 10.sp,
                             lineHeight = 12.sp,
                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,

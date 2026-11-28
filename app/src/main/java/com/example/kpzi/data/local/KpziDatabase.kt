@@ -135,6 +135,33 @@ data class PlaySessionEntity(
     @ColumnInfo(name = "launch_mode") val launchMode: String,
 )
 
+@Entity(tableName = "favorite_rooms")
+data class FavoriteRoomEntity(
+    @PrimaryKey @ColumnInfo(name = "room_id") val roomId: String,
+    @ColumnInfo(name = "room_name") val roomName: String,
+    @ColumnInfo(name = "owner_name") val ownerName: String,
+    @ColumnInfo(name = "host_address") val hostAddress: String,
+    @ColumnInfo(name = "port") val port: Int,
+    @ColumnInfo(name = "room_code") val roomCode: String,
+    @ColumnInfo(name = "saved_at_ms") val savedAtMs: Long,
+)
+
+@Entity(
+    tableName = "coop_history",
+    indices = [Index(value = ["played_at_ms"])],
+)
+data class CoopHistoryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0L,
+    @ColumnInfo(name = "room_id") val roomId: String,
+    @ColumnInfo(name = "room_name") val roomName: String,
+    @ColumnInfo(name = "owner_name") val ownerName: String,
+    @ColumnInfo(name = "role") val role: String,
+    @ColumnInfo(name = "game_version") val gameVersion: String,
+    @ColumnInfo(name = "ping_ms") val pingMs: Int?,
+    @ColumnInfo(name = "room_code") val roomCode: String,
+    @ColumnInfo(name = "played_at_ms") val playedAtMs: Long,
+)
+
 @Dao
 interface ModCacheDao {
     @Query("SELECT * FROM mod_cache WHERE feedTag = :feedTag ORDER BY cachedAtMs DESC, downloads DESC")
@@ -183,14 +210,37 @@ interface PlaySessionDao {
     suspend fun clearAll()
 }
 
+@Dao
+interface MultiplayerDao {
+    @Query("SELECT * FROM favorite_rooms ORDER BY saved_at_ms DESC")
+    fun observeFavorites(): Flow<List<FavoriteRoomEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertFavorite(item: FavoriteRoomEntity)
+
+    @Query("DELETE FROM favorite_rooms WHERE room_id = :roomId")
+    suspend fun deleteFavorite(roomId: String)
+
+    @Query("SELECT * FROM coop_history ORDER BY played_at_ms DESC LIMIT 30")
+    fun observeHistory(): Flow<List<CoopHistoryEntity>>
+
+    @Insert
+    suspend fun insertHistory(entry: CoopHistoryEntity)
+
+    @Query("DELETE FROM coop_history")
+    suspend fun clearHistory()
+}
+
 @Database(
     entities = [
         ModCacheEntity::class,
         DownloadRecordEntity::class,
         InstalledModEntity::class,
         PlaySessionEntity::class,
+        FavoriteRoomEntity::class,
+        CoopHistoryEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class KpziDatabase : RoomDatabase() {
@@ -198,6 +248,7 @@ abstract class KpziDatabase : RoomDatabase() {
     abstract fun downloadRecordDao(): DownloadRecordDao
     abstract fun modDao(): ModDao
     abstract fun playSessionDao(): PlaySessionDao
+    abstract fun multiplayerDao(): MultiplayerDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -252,6 +303,41 @@ abstract class KpziDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `favorite_rooms` (
+                        `room_id` TEXT NOT NULL,
+                        `room_name` TEXT NOT NULL,
+                        `owner_name` TEXT NOT NULL,
+                        `host_address` TEXT NOT NULL,
+                        `port` INTEGER NOT NULL,
+                        `room_code` TEXT NOT NULL,
+                        `saved_at_ms` INTEGER NOT NULL,
+                        PRIMARY KEY(`room_id`)
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `coop_history` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `room_id` TEXT NOT NULL,
+                        `room_name` TEXT NOT NULL,
+                        `owner_name` TEXT NOT NULL,
+                        `role` TEXT NOT NULL,
+                        `game_version` TEXT NOT NULL,
+                        `ping_ms` INTEGER,
+                        `room_code` TEXT NOT NULL,
+                        `played_at_ms` INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_coop_history_played_at_ms` ON `coop_history` (`played_at_ms`)")
+            }
+        }
+
         @Volatile
         private var instance: KpziDatabase? = null
 
@@ -262,7 +348,7 @@ abstract class KpziDatabase : RoomDatabase() {
                     KpziDatabase::class.java,
                     "kpzi_mod_manager.db",
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { instance = it }
             }

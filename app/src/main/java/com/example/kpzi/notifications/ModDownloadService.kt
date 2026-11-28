@@ -11,12 +11,14 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.example.kpzi.KpziContainer
 import com.example.kpzi.domain.model.DownloadStatus
+import com.example.kpzi.ui.i18n.AppLanguage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -52,6 +54,8 @@ class ModDownloadService : Service() {
 
         if (observerJob == null) {
             observerJob = serviceScope.launch {
+                container.notificationHelper.isEnglish =
+                    container.settingsPreferences.settingsFlow.first().appLanguage == AppLanguage.ENGLISH
                 container.modDownloadManager.downloadsFlow.collectLatest { tasks ->
                     val active = tasks.filter {
                         it.status == DownloadStatus.DOWNLOADING ||

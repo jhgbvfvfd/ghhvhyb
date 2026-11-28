@@ -1,33 +1,42 @@
 package com.example.kpzi.domain.model
 
-enum class CompatibilityLevel(val labelTh: String) {
-    VERIFIED_WORKING("ทดสอบแล้วว่าใช้งานได้"),
-    LIKELY_COMPATIBLE("คาดว่ารองรับ"),
-    UNVERIFIED("ยังไม่ได้ตรวจสอบ"),
-    INCOMPATIBLE("ไม่รองรับ"),
+enum class CompatibilityLevel(val labelTh: String, val labelEn: String) {
+    VERIFIED_WORKING("ทดสอบแล้วว่าใช้งานได้", "Verified Working"),
+    LIKELY_COMPATIBLE("คาดว่ารองรับ", "Likely Compatible"),
+    UNVERIFIED("ยังไม่ได้ตรวจสอบ", "Unverified"),
+    INCOMPATIBLE("ไม่รองรับ", "Incompatible"),
+    ;
+
+    fun label(isEnglish: Boolean): String = if (isEnglish) labelEn else labelTh
 }
 
-enum class ModCategory(val labelTh: String, val queryKeyword: String?) {
-    ALL("ทั้งหมด", null),
-    POPULAR("ยอดนิยม", null),
-    NEW("มาใหม่", null),
-    RECENTLY_UPDATED("อัปเดตล่าสุด", null),
-    GRAPHICS("กราฟิก", "visual"),
-    GAMEPLAY("ระบบเกม", "gameplay"),
-    CHARACTERS("ตัวละคร", "portrait"),
-    FARM("ฟาร์ม", "farm"),
-    BUILDINGS("อาคาร", "building"),
-    THAI_LANG("ภาษาไทย", "thai"),
-    TOOLS("เครื่องมือ", "framework"),
-    CHEATS("มอดโกง", "cheat"),
+enum class ModCategory(val labelTh: String, val labelEn: String, val queryKeyword: String?) {
+    ALL("ทั้งหมด", "All", null),
+    POPULAR("ยอดนิยม", "Popular", null),
+    NEW("มาใหม่", "New", null),
+    RECENTLY_UPDATED("อัปเดตล่าสุด", "Updated", null),
+    GRAPHICS("กราฟิก", "Graphics", "visual"),
+    GAMEPLAY("ระบบเกม", "Gameplay", "gameplay"),
+    CHARACTERS("ตัวละคร", "Characters", "portrait"),
+    FARM("ฟาร์ม", "Farm", "farm"),
+    BUILDINGS("อาคาร", "Buildings", "building"),
+    THAI_LANG("ภาษาไทย", "Thai", "thai"),
+    TOOLS("เครื่องมือ", "Tools", "framework"),
+    CHEATS("มอดโกง", "Cheats", "cheat"),
+    ;
+
+    fun label(isEnglish: Boolean): String = if (isEnglish) labelEn else labelTh
 }
 
-enum class RateLimitStatus(val labelTh: String) {
-    UNAVAILABLE("รอการเชื่อมต่อ API"),
-    HEALTHY("ปกติ"),
-    LOW("ใกล้เต็มโควตา"),
-    EXHAUSTED("โควตาหมดชั่วคราว"),
-    RATE_LIMITED("ถูกจำกัดความถี่ (429)"),
+enum class RateLimitStatus(val labelTh: String, val labelEn: String) {
+    UNAVAILABLE("รอการเชื่อมต่อ API", "Waiting for API"),
+    HEALTHY("ปกติ", "Healthy"),
+    LOW("ใกล้เต็มโควตา", "Low Quota"),
+    EXHAUSTED("โควตาหมดชั่วคราว", "Quota Exhausted"),
+    RATE_LIMITED("ถูกจำกัดความถี่ (429)", "Rate Limited (429)"),
+    ;
+
+    fun label(isEnglish: Boolean): String = if (isEnglish) labelEn else labelTh
 }
 
 data class ApiQuotaState(
@@ -132,14 +141,17 @@ data class InstalledMod(
     val installedAtMs: Long = 0L,
 )
 
-enum class DownloadStatus(val labelTh: String) {
-    QUEUED("รอคิว"),
-    DOWNLOADING("กำลังดาวน์โหลด"),
-    PAUSED("หยุดชั่วคราว"),
-    VERIFYING("ตรวจสอบไฟล์"),
-    COMPLETED("เสร็จสิ้น"),
-    FAILED("ล้มเหลว"),
-    CANCELLED("ยกเลิกแล้ว"),
+enum class DownloadStatus(val labelTh: String, val labelEn: String) {
+    QUEUED("รอคิว", "Queued"),
+    DOWNLOADING("กำลังดาวน์โหลด", "Downloading"),
+    PAUSED("หยุดชั่วคราว", "Paused"),
+    VERIFYING("ตรวจสอบไฟล์", "Verifying"),
+    COMPLETED("เสร็จสิ้น", "Completed"),
+    FAILED("ล้มเหลว", "Failed"),
+    CANCELLED("ยกเลิกแล้ว", "Cancelled"),
+    ;
+
+    fun label(isEnglish: Boolean): String = if (isEnglish) labelEn else labelTh
 }
 
 data class DownloadTask(
@@ -216,9 +228,12 @@ data class LogEntry(
     val message: String,
 )
 
-enum class BackupCategory(val labelTh: String) {
-    MODS_AND_CONFIG("มอดและบันทึกระบบ"),
-    SAVE_FILES("เซฟเกม (SAF)"),
+enum class BackupCategory(val labelTh: String, val labelEn: String) {
+    MODS_AND_CONFIG("มอดและบันทึกระบบ", "Mods & Logs"),
+    SAVE_FILES("เซฟเกม (SAF)", "Save Files (SAF)"),
+    ;
+
+    fun label(isEnglish: Boolean): String = if (isEnglish) labelEn else labelTh
 }
 
 data class SaveBackupInfo(

@@ -57,6 +57,7 @@ import com.example.kpzi.ui.components.ModCoverThumb
 import com.example.kpzi.ui.components.StatusPill
 import com.example.kpzi.ui.components.formatCompactCount
 import com.example.kpzi.ui.components.formatFileSize
+import com.example.kpzi.ui.i18n.tr
 import com.example.ui.theme.LocalKpziColors
 
 @Composable
@@ -82,8 +83,8 @@ fun ModDetailScreen(
     if (detail == null) {
         Box(modifier = modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(state.errorMessage ?: "ไม่พบข้อมูลมอด", style = MaterialTheme.typography.titleMedium)
-                OutlinedButton(onClick = onBack) { Text("กลับ") }
+                Text(state.errorMessage ?: tr("ไม่พบข้อมูลมอด", "Mod details not found"), style = MaterialTheme.typography.titleMedium)
+                OutlinedButton(onClick = onBack) { Text(tr("กลับ", "Back")) }
             }
         }
         return
@@ -140,7 +141,7 @@ fun ModDetailScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                                    contentDescription = "ย้อนกลับ",
+                                    contentDescription = tr("ย้อนกลับ", "Back"),
                                     tint = Color.White,
                                 )
                             }
@@ -152,7 +153,7 @@ fun ModDetailScreen(
                             IconButton(onClick = { onOpenOriginalUrl(detail.nexusUrl) }) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
-                                    contentDescription = "เปิดหน้าต้นฉบับ Nexus Mods",
+                                    contentDescription = tr("เปิดหน้าต้นฉบับ Nexus Mods", "Open on Nexus Mods"),
                                     tint = Color.White,
                                 )
                             }
@@ -175,7 +176,10 @@ fun ModDetailScreen(
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = "ผู้พัฒนา: ${detail.summary.author} • Mod ID #${detail.summary.modId}",
+                        text = tr(
+                            "ผู้พัฒนา: ${detail.summary.author} • Mod ID #${detail.summary.modId}",
+                            "Author: ${detail.summary.author} • Mod ID #${detail.summary.modId}",
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = ext.mutedText,
                     )
@@ -197,12 +201,13 @@ fun ModDetailScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            StatMetaItem("ดาวน์โหลด", formatCompactCount(detail.summary.downloads))
+                            StatMetaItem(tr("ดาวน์โหลด", "Downloads"), formatCompactCount(detail.summary.downloads))
                             StatMetaItem(
-                                "ขนาดไฟล์",
-                                detail.summary.fileSizeBytes?.takeIf { it > 0L }?.let(::formatFileSize) ?: "ดูรายการไฟล์",
+                                tr("ขนาดไฟล์", "File Size"),
+                                detail.summary.fileSizeBytes?.takeIf { it > 0L }?.let(::formatFileSize)
+                                    ?: tr("ดูรายการไฟล์", "See Files"),
                             )
-                            StatMetaItem("เวอร์ชัน", "v${detail.summary.version}")
+                            StatMetaItem(tr("เวอร์ชัน", "Version"), "v${detail.summary.version}")
                         }
                     }
 
@@ -235,7 +240,7 @@ fun ModDetailScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("รายละเอียด", style = MaterialTheme.typography.titleLarge)
+                        Text(tr("รายละเอียด", "Description"), style = MaterialTheme.typography.titleLarge)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -246,7 +251,7 @@ fun ModDetailScreen(
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp),
                             )
-                            Text("แปลไทย", style = MaterialTheme.typography.labelMedium)
+                            Text(tr("แปลไทย", "Thai Translation"), style = MaterialTheme.typography.labelMedium)
                             Switch(
                                 checked = state.translateToThai,
                                 onCheckedChange = { onToggleTranslate() },
@@ -256,7 +261,9 @@ fun ModDetailScreen(
                     }
                     KpziCard(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            text = displayedDescription.ifBlank { "ไม่มีคำอธิบายเพิ่มเติมจากผู้พัฒนา" },
+                            text = displayedDescription.ifBlank {
+                                tr("ไม่มีคำอธิบายเพิ่มเติมจากผู้พัฒนา", "No additional description provided by the author.")
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -273,7 +280,7 @@ fun ModDetailScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Text(
-                            text = "ภาพตัวอย่าง",
+                            text = tr("ภาพตัวอย่าง", "Screenshots"),
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.padding(horizontal = 16.dp),
                         )
@@ -284,7 +291,7 @@ fun ModDetailScreen(
                             items(detail.previewImageUrls) { url ->
                                 ModCoverThumb(
                                     pictureUrl = url,
-                                    contentDescription = "ภาพตัวอย่างมอด",
+                                    contentDescription = tr("ภาพตัวอย่างมอด", "Mod screenshot"),
                                     modifier = Modifier
                                         .width(180.dp)
                                         .height(106.dp),
@@ -303,15 +310,15 @@ fun ModDetailScreen(
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("ข้อมูลความเข้ากันได้และลิขสิทธิ์", style = MaterialTheme.typography.titleMedium)
+                    Text(tr("ข้อมูลความเข้ากันได้และลิขสิทธิ์", "Compatibility & License"), style = MaterialTheme.typography.titleMedium)
                     KpziCard(modifier = Modifier.fillMaxWidth()) {
-                        DetailInfoRow("เวอร์ชันเกมที่ระบุ", detail.supportedGameVersions.joinToString(", "))
+                        DetailInfoRow(tr("เวอร์ชันเกมที่ระบุ", "Supported Game Versions"), detail.supportedGameVersions.joinToString(", "))
                         HorizontalDivider(Modifier.padding(vertical = 6.dp), color = ext.border)
-                        DetailInfoRow("เวอร์ชัน SMAPI", detail.requiredSmapiVersion ?: "ไม่ระบุในรายละเอียด")
+                        DetailInfoRow(tr("เวอร์ชัน SMAPI", "SMAPI Version"), detail.requiredSmapiVersion ?: tr("ไม่ระบุในรายละเอียด", "Not specified"))
                         HorizontalDivider(Modifier.padding(vertical = 6.dp), color = ext.border)
                         DetailInfoRow(
                             "Dependencies",
-                            if (detail.dependencies.isEmpty()) "ไม่พบการระบุเพิ่มเติม" else detail.dependencies.joinToString(", "),
+                            if (detail.dependencies.isEmpty()) tr("ไม่พบการระบุเพิ่มเติม", "None listed") else detail.dependencies.joinToString(", "),
                         )
                         HorizontalDivider(Modifier.padding(vertical = 6.dp), color = ext.border)
                         DetailInfoRow("License", detail.licenseName)
@@ -324,7 +331,7 @@ fun ModDetailScreen(
                         ) {
                             Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("เปิดลิงก์ต้นฉบับบน Nexus Mods")
+                            Text(tr("เปิดลิงก์ต้นฉบับบน Nexus Mods", "Open on Nexus Mods"))
                         }
                     }
                 }
@@ -338,11 +345,18 @@ fun ModDetailScreen(
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("รายการไฟล์ (${detail.files.size})", style = MaterialTheme.typography.titleMedium)
+                    Text(tr("รายการไฟล์ (${detail.files.size})", "Files (${detail.files.size})"), style = MaterialTheme.typography.titleMedium)
                     if (detail.files.isEmpty()) {
                         KpziCard(modifier = Modifier.fillMaxWidth()) {
                             Text(
-                                text = if (state.isLoading) "กำลังโหลดรายการไฟล์..." else "กดปุ่มด้านล่างเพื่อเปิดหน้าดาวน์โหลดไฟล์บน Nexus Mods",
+                                text = if (state.isLoading) {
+                                    tr("กำลังโหลดรายการไฟล์...", "Loading files...")
+                                } else {
+                                    tr(
+                                        "กดปุ่มด้านล่างเพื่อเปิดหน้าดาวน์โหลดไฟล์บน Nexus Mods",
+                                        "Tap the button below to open the Nexus Mods files page.",
+                                    )
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = ext.mutedText,
                             )
@@ -382,7 +396,7 @@ fun ModDetailScreen(
                         ) {
                             Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text(if (userProfile?.isPremium == true) "โหลดตรง" else "หน้าเว็บ")
+                            Text(if (userProfile?.isPremium == true) tr("โหลดตรง", "Direct") else tr("หน้าเว็บ", "Website"))
                         }
                     }
                 }
@@ -397,10 +411,10 @@ fun ModDetailScreen(
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text("ประวัติอัปเดต", style = MaterialTheme.typography.titleMedium)
+                        Text(tr("ประวัติอัปเดต", "Changelog"), style = MaterialTheme.typography.titleMedium)
                         detail.changelogs.take(5).forEach { entry ->
                             KpziCard(modifier = Modifier.fillMaxWidth()) {
-                                Text("เวอร์ชัน ${entry.version}", style = MaterialTheme.typography.titleSmall)
+                                Text(tr("เวอร์ชัน ${entry.version}", "Version ${entry.version}"), style = MaterialTheme.typography.titleSmall)
                                 Spacer(Modifier.height(4.dp))
                                 entry.changes.forEach { line ->
                                     Text("• $line", style = MaterialTheme.typography.bodySmall, color = ext.mutedText)
@@ -437,9 +451,9 @@ fun ModDetailScreen(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = if (userProfile?.isPremium == true && detail.files.isNotEmpty()) {
-                            "ดาวน์โหลดและติดตั้งมอด"
+                            tr("ดาวน์โหลดและติดตั้งมอด", "Download & Install Mod")
                         } else {
-                            "เปิดหน้าดาวน์โหลด Nexus Mods"
+                            tr("เปิดหน้าดาวน์โหลด Nexus Mods", "Open Nexus Mods Download Page")
                         },
                         style = MaterialTheme.typography.titleSmall,
                     )

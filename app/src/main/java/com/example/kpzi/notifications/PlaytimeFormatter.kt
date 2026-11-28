@@ -46,6 +46,24 @@ object PlaytimeFormatter {
         }
     }
 
+    fun formatBreakdown(
+        totalSeconds: Long,
+        includeSeconds: Boolean = false,
+        isEnglish: Boolean = false,
+    ): String {
+        if (!isEnglish) return formatThaiBreakdown(totalSeconds, includeSeconds)
+        val b = breakdown(totalSeconds)
+        return buildString {
+            append("${b.months} mo ")
+            append("${b.days}d ")
+            append("${b.hours}h ")
+            append("${b.minutes}m")
+            if (includeSeconds) {
+                append(" ${b.seconds}s")
+            }
+        }
+    }
+
     fun formatCompactThai(totalSeconds: Long): String {
         val b = breakdown(totalSeconds)
         val parts = mutableListOf<String>()
@@ -53,6 +71,17 @@ object PlaytimeFormatter {
         if (b.days > 0 || b.months > 0) parts.add("${b.days} วัน")
         if (b.hours > 0 || parts.isNotEmpty()) parts.add("${b.hours} ชม.")
         parts.add("${b.minutes} นาที")
+        return parts.joinToString(" ")
+    }
+
+    fun formatCompact(totalSeconds: Long, isEnglish: Boolean = false): String {
+        if (!isEnglish) return formatCompactThai(totalSeconds)
+        val b = breakdown(totalSeconds)
+        val parts = mutableListOf<String>()
+        if (b.months > 0) parts.add("${b.months} mo")
+        if (b.days > 0 || b.months > 0) parts.add("${b.days}d")
+        if (b.hours > 0 || parts.isNotEmpty()) parts.add("${b.hours}h")
+        parts.add("${b.minutes}m")
         return parts.joinToString(" ")
     }
 

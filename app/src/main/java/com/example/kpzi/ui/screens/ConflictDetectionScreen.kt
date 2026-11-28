@@ -60,17 +60,21 @@ import com.example.kpzi.engine.loader.ModConflictIssue
 import com.example.kpzi.ui.components.IosSquircleIcon
 import com.example.kpzi.ui.components.KpziCard
 import com.example.kpzi.ui.components.StatusPill
+import com.example.kpzi.ui.i18n.isEnglishLanguage
+import com.example.kpzi.ui.i18n.tr
 import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.theme.LocalKpziColors
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private enum class ConflictFilter(val label: String) {
-    ALL("ทั้งหมด"),
-    LOOPS("Dependency Loop"),
-    VERSIONS("เวอร์ชันไม่ตรง"),
-    DEPENDENCIES("ขาดมอด / ปิดอยู่"),
+private enum class ConflictFilter(val labelTh: String, val labelEn: String) {
+    ALL("ทั้งหมด", "All"),
+    LOOPS("Dependency Loop", "Dependency Loop"),
+    VERSIONS("เวอร์ชันไม่ตรง", "Version Mismatch"),
+    DEPENDENCIES("ขาดมอด / ปิดอยู่", "Missing / Disabled");
+
+    fun label(isEnglish: Boolean): String = if (isEnglish) labelEn else labelTh
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,6 +89,7 @@ fun ConflictDetectionScreen(
     modifier: Modifier = Modifier,
 ) {
     val ext = LocalKpziColors.current
+    val isEnglish = isEnglishLanguage()
     var selectedFilter by remember { mutableStateOf(ConflictFilter.ALL) }
     val dateFormat = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
 
@@ -108,10 +113,10 @@ fun ConflictDetectionScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("ตรวจจับความขัดแย้งมอด", style = MaterialTheme.typography.titleLarge) },
+                title = { Text(tr("ตรวจจับความขัดแย้งมอด", "Mod Conflict Detection"), style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.testTag("conflict_back")) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "ย้อนกลับ")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = tr("ย้อนกลับ", "Back"))
                     }
                 },
                 actions = {
@@ -119,7 +124,7 @@ fun ConflictDetectionScreen(
                         if (isScanning) {
                             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                         } else {
-                            Icon(Icons.Rounded.Refresh, contentDescription = "สแกนใหม่")
+                            Icon(Icons.Rounded.Refresh, contentDescription = tr("สแกนใหม่", "Rescan"))
                         }
                     }
                 },
@@ -160,12 +165,15 @@ fun ConflictDetectionScreen(
                                 cornerRadius = 13.dp,
                             )
                             Column {
-                                Text("วิเคราะห์ manifest.json จากฐานข้อมูล", style = MaterialTheme.typography.titleSmall)
+                                Text(tr("วิเคราะห์ manifest.json จากฐานข้อมูล", "Analyze manifest.json from Room DB"), style = MaterialTheme.typography.titleSmall)
                                 Text(
                                     text = if (report != null) {
-                                        "สแกนแล้ว ${report.scannedModCount} มอด • ล่าสุด ${dateFormat.format(Date(report.scannedAtMs))}"
+                                        tr(
+                                            "สแกนแล้ว ${report.scannedModCount} มอด • ล่าสุด ${dateFormat.format(Date(report.scannedAtMs))}",
+                                            "Scanned ${report.scannedModCount} mods • Updated ${dateFormat.format(Date(report.scannedAtMs))}",
+                                        )
                                     } else {
-                                        "กำลังเตรียมตรวจสอบมอดที่ติดตั้งในเครื่อง"
+                                        tr("กำลังเตรียมตรวจสอบมอดที่ติดตั้งในเครื่อง", "Preparing to scan installed mods")
                                     },
                                     style = MaterialTheme.typography.labelSmall,
                                     color = ext.mutedText,
@@ -174,7 +182,11 @@ fun ConflictDetectionScreen(
                         }
                         if (report != null) {
                             StatusPill(
-                                text = if (report.hasIssues) "พบ ${report.issues.size} ปัญหา" else "ปกติ",
+                                text = if (report.hasIssues) {
+                                    tr("พบ ${report.issues.size} ปัญหา", "${report.issues.size} issues")
+                                } else {
+                                    tr("ปกติ", "Healthy")
+                                },
                                 containerColor = if (report.hasIssues) ext.errorContainer else ext.successContainer,
                                 contentColor = if (report.hasIssues) ext.error else ext.success,
                             )
@@ -188,25 +200,25 @@ fun ConflictDetectionScreen(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         ConflictCounterTile(
-                            label = "วนลูป",
+                            label = tr("วนลูป", "Loops"),
                             count = report?.loopCount ?: 0,
                             highlightColor = if ((report?.loopCount ?: 0) > 0) ext.error else null,
                             modifier = Modifier.weight(1f),
                         )
                         ConflictCounterTile(
-                            label = "เวอร์ชันผิด",
+                            label = tr("เวอร์ชันผิด", "Versions"),
                             count = report?.versionMismatchCount ?: 0,
                             highlightColor = if ((report?.versionMismatchCount ?: 0) > 0) ext.error else null,
                             modifier = Modifier.weight(1f),
                         )
                         ConflictCounterTile(
-                            label = "ขาดมอด",
+                            label = tr("ขาดมอด", "Missing"),
                             count = report?.missingDependencyCount ?: 0,
                             highlightColor = if ((report?.missingDependencyCount ?: 0) > 0) ext.warning else null,
                             modifier = Modifier.weight(1f),
                         )
                         ConflictCounterTile(
-                            label = "ปิด/ซ้ำ",
+                            label = tr("ปิด/ซ้ำ", "Off / Dup"),
                             count = (report?.disabledDependencyCount ?: 0) + (report?.duplicateIdCount ?: 0),
                             highlightColor = if (((report?.disabledDependencyCount ?: 0) + (report?.duplicateIdCount ?: 0)) > 0) ext.warning else null,
                             modifier = Modifier.weight(1f),
@@ -226,7 +238,13 @@ fun ConflictDetectionScreen(
                     ) {
                         Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text(if (isScanning) "กำลังตรวจสอบ manifest.json..." else "สแกนหาความขัดแย้งจาก Room DB")
+                        Text(
+                            if (isScanning) {
+                                tr("กำลังตรวจสอบ manifest.json...", "Scanning manifest.json...")
+                            } else {
+                                tr("สแกนหาความขัดแย้งจาก Room DB", "Scan Conflicts from Room DB")
+                            },
+                        )
                     }
                 }
             }
@@ -254,7 +272,7 @@ fun ConflictDetectionScreen(
                             selected = selected,
                             onClick = { selectedFilter = filter },
                             label = {
-                                Text("${filter.label} ($count)", style = MaterialTheme.typography.labelMedium)
+                                Text("${filter.label(isEnglish)} ($count)", style = MaterialTheme.typography.labelMedium)
                             },
                             shape = RoundedCornerShape(50),
                             colors = FilterChipDefaults.filterChipColors(
@@ -302,19 +320,25 @@ fun ConflictDetectionScreen(
                             )
                             Text(
                                 text = if (report.scannedModCount == 0) {
-                                    "ยังไม่มีมอดในฐานข้อมูลสำหรับตรวจสอบ"
+                                    tr("ยังไม่มีมอดในฐานข้อมูลสำหรับตรวจสอบ", "No mods in database to scan")
                                 } else if (selectedFilter == ConflictFilter.ALL) {
-                                    "ไม่พบความขัดแย้งของมอด"
+                                    tr("ไม่พบความขัดแย้งของมอด", "No mod conflicts detected")
                                 } else {
-                                    "ไม่พบปัญหาในหมวดหมู่นี้"
+                                    tr("ไม่พบปัญหาในหมวดหมู่นี้", "No issues in this category")
                                 },
                                 style = MaterialTheme.typography.titleMedium,
                             )
                             Text(
                                 text = if (report.scannedModCount == 0) {
-                                    "นำเข้าไฟล์มอด .zip หรือโฟลเดอร์มอดในหน้ามอดของฉัน เพื่อตรวจสอบความเข้ากันได้และ Dependency"
+                                    tr(
+                                        "นำเข้าไฟล์มอด .zip หรือโฟลเดอร์มอดในหน้ามอดของฉัน เพื่อตรวจสอบความเข้ากันได้และ Dependency",
+                                        "Import a .zip mod archive or folder in My Mods to inspect compatibility and dependencies.",
+                                    )
                                 } else {
-                                    "ตรวจสอบข้อกำหนด manifest.json ทั้ง ${report.scannedModCount} มอดแล้ว ไม่พบ Dependency Loop หรือเวอร์ชันขัดแย้งกัน"
+                                    tr(
+                                        "ตรวจสอบข้อกำหนด manifest.json ทั้ง ${report.scannedModCount} มอดแล้ว ไม่พบ Dependency Loop หรือเวอร์ชันขัดแย้งกัน",
+                                        "Checked manifest.json requirements across all ${report.scannedModCount} mods with no dependency loops or version conflicts.",
+                                    )
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = ext.mutedText,
@@ -376,6 +400,7 @@ private fun ConflictIssueCard(
     onOpenMyMods: () -> Unit,
 ) {
     val ext = LocalKpziColors.current
+    val isEnglish = isEnglishLanguage()
     val isCritical = issue.severity == ConflictSeverity.CRITICAL
     val accentBg = if (isCritical) ext.errorContainer else ext.warningContainer
     val accentFg = if (isCritical) ext.error else ext.warning
@@ -423,26 +448,26 @@ private fun ConflictIssueCard(
                     }
                 }
                 StatusPill(
-                    text = issue.severity.labelTh,
+                    text = issue.severity.label(isEnglish),
                     containerColor = accentBg,
                     contentColor = accentFg,
                 )
             }
 
             StatusPill(
-                text = issue.type.labelTh,
+                text = issue.type.label(isEnglish),
                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
                 contentColor = MaterialTheme.colorScheme.onSurface,
             )
 
             Text(
-                text = issue.summaryTh,
+                text = issue.summary(isEnglish),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = accentFg,
             )
             Text(
-                text = issue.detailTh,
+                text = issue.detail(isEnglish),
                 style = MaterialTheme.typography.bodySmall,
                 color = ext.mutedText,
             )
@@ -453,7 +478,10 @@ private fun ConflictIssueCard(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                 ) {
                     Text(
-                        text = "ต้องการขั้นต่ำ: v${issue.requiredVersion}  •  เวอร์ชันในเครื่อง: v${issue.actualVersion}",
+                        text = tr(
+                            "ต้องการขั้นต่ำ: v${issue.requiredVersion}  •  เวอร์ชันในเครื่อง: v${issue.actualVersion}",
+                            "Required min: v${issue.requiredVersion}  •  Installed: v${issue.actualVersion}",
+                        ),
                         style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetBrainsMonoFontFamily),
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                     )
@@ -472,7 +500,10 @@ private fun ConflictIssueCard(
                 ) {
                     Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("เปิดใช้งานมอดหลัก ($targetId)", style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        text = tr("เปิดใช้งานมอดหลัก ($targetId)", "Enable Required Mod ($targetId)"),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
                 }
             } else {
                 OutlinedButton(
@@ -483,7 +514,7 @@ private fun ConflictIssueCard(
                         .fillMaxWidth()
                         .height(40.dp),
                 ) {
-                    Text("จัดการในหน้ามอดของฉัน", style = MaterialTheme.typography.labelMedium)
+                    Text(tr("จัดการในหน้ามอดของฉัน", "Manage in My Mods"), style = MaterialTheme.typography.labelMedium)
                 }
             }
         }

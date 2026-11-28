@@ -54,6 +54,8 @@ import com.example.kpzi.ui.components.ModCoverThumb
 import com.example.kpzi.ui.components.StatusPill
 import com.example.kpzi.ui.components.formatEta
 import com.example.kpzi.ui.components.formatFileSize
+import com.example.kpzi.ui.i18n.isEnglishLanguage
+import com.example.kpzi.ui.i18n.tr
 import com.example.ui.theme.LocalKpziColors
 import kotlin.math.roundToInt
 
@@ -90,13 +92,16 @@ fun DownloadsScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
         Text(
-            text = "ดาวน์โหลด",
+            text = tr("ดาวน์โหลด", "Downloads"),
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
         )
 
         IosSegmentedControl(
-            options = listOf("กำลังดาวน์โหลด (${activeList.size})", "เสร็จสิ้น / ประวัติ (${historyList.size})"),
+            options = listOf(
+                tr("กำลังดาวน์โหลด (${activeList.size})", "Active (${activeList.size})"),
+                tr("เสร็จสิ้น / ประวัติ (${historyList.size})", "Completed / History (${historyList.size})"),
+            ),
             selectedIndex = selectedTab,
             onSelect = { selectedTab = it },
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -124,11 +129,18 @@ fun DownloadsScreen(
                             contentScale = ContentScale.Crop,
                         )
                         Text(
-                            text = if (selectedTab == 0) "ไม่มีรายการที่กำลังดาวน์โหลด" else "ยังไม่มีประวัติดาวน์โหลด",
+                            text = if (selectedTab == 0) {
+                                tr("ไม่มีรายการที่กำลังดาวน์โหลด", "No active downloads")
+                            } else {
+                                tr("ยังไม่มีประวัติดาวน์โหลด", "No download history yet")
+                            },
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
-                            text = "เลือกดาวน์โหลดมอดจากคลังมอด หรือใช้ NXM Link จาก Nexus Mods",
+                            text = tr(
+                                "เลือกดาวน์โหลดมอดจากคลังมอด หรือใช้ NXM Link จาก Nexus Mods",
+                                "Download mods from the Catalog or use a Nexus Mods NXM link.",
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = ext.mutedText,
                         )
@@ -166,6 +178,7 @@ private fun DownloadItemCard(
     onRemove: () -> Unit,
 ) {
     val ext = LocalKpziColors.current
+    val isEnglish = isEnglishLanguage()
     val percent = (task.progressFraction * 100f).roundToInt()
 
     KpziCard(modifier = Modifier.fillMaxWidth()) {
@@ -223,8 +236,8 @@ private fun DownloadItemCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                val speedText = if (task.speedBytesPerSec > 0L) "${formatFileSize(task.speedBytesPerSec)}/s" else task.status.labelTh
-                val etaText = formatEta(task.etaSeconds)
+                val speedText = if (task.speedBytesPerSec > 0L) "${formatFileSize(task.speedBytesPerSec)}/s" else task.status.label(isEnglish)
+                val etaText = formatEta(task.etaSeconds, isEnglish = isEnglish)
                 val sizeInfo = "${formatFileSize(task.downloadedBytes)} / ${if (task.totalBytes > 0L) formatFileSize(task.totalBytes) else "?"}"
                 Text(
                     text = listOf(sizeInfo, speedText, etaText).filter { it.isNotBlank() }.joinToString(" • "),
@@ -235,15 +248,15 @@ private fun DownloadItemCard(
                 Row {
                     if (task.status == DownloadStatus.DOWNLOADING) {
                         IconButton(onClick = onPause, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Rounded.Pause, contentDescription = "หยุดชั่วคราว")
+                            Icon(Icons.Rounded.Pause, contentDescription = tr("หยุดชั่วคราว", "Pause"))
                         }
                     } else if (task.status == DownloadStatus.PAUSED) {
                         IconButton(onClick = onResumeOrRetry, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Rounded.PlayArrow, contentDescription = "ดาวน์โหลดต่อ")
+                            Icon(Icons.Rounded.PlayArrow, contentDescription = tr("ดาวน์โหลดต่อ", "Resume"))
                         }
                     }
                     IconButton(onClick = onCancel, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Rounded.Close, contentDescription = "ยกเลิก")
+                        Icon(Icons.Rounded.Close, contentDescription = tr("ยกเลิก", "Cancel"))
                     }
                 }
             }
@@ -257,7 +270,10 @@ private fun DownloadItemCard(
                 when (task.status) {
                     DownloadStatus.COMPLETED -> {
                         StatusPill(
-                            text = "ตรวจไฟล์ผ่าน (${formatFileSize(task.totalBytes)})",
+                            text = tr(
+                                "ตรวจไฟล์ผ่าน (${formatFileSize(task.totalBytes)})",
+                                "Verified (${formatFileSize(task.totalBytes)})",
+                            ),
                             containerColor = ext.successContainer,
                             contentColor = ext.success,
                             icon = Icons.Rounded.CheckCircle,
@@ -271,16 +287,24 @@ private fun DownloadItemCard(
                             ) {
                                 Icon(Icons.Rounded.InstallMobile, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("ติดตั้งทันที", style = MaterialTheme.typography.labelMedium)
+                                Text(tr("ติดตั้งทันที", "Install Now"), style = MaterialTheme.typography.labelMedium)
                             }
                             IconButton(onClick = onRemove, modifier = Modifier.size(36.dp)) {
-                                Icon(Icons.Rounded.DeleteOutline, contentDescription = "ลบประวัติ", tint = ext.mutedText)
+                                Icon(
+                                    Icons.Rounded.DeleteOutline,
+                                    contentDescription = tr("ลบประวัติ", "Remove"),
+                                    tint = ext.mutedText,
+                                )
                             }
                         }
                     }
                     else -> {
                         StatusPill(
-                            text = if (task.isCorrupted) "ไฟล์เสียหาย" else (task.errorMessage ?: task.status.labelTh),
+                            text = if (task.isCorrupted) {
+                                tr("ไฟล์เสียหาย", "File Corrupted")
+                            } else {
+                                task.errorMessage ?: task.status.label(isEnglish)
+                            },
                             containerColor = ext.errorContainer,
                             contentColor = ext.error,
                             icon = Icons.Rounded.WarningAmber,
@@ -288,10 +312,14 @@ private fun DownloadItemCard(
                         )
                         Row {
                             IconButton(onClick = onResumeOrRetry, modifier = Modifier.size(36.dp)) {
-                                Icon(Icons.Rounded.Refresh, contentDescription = "ลองใหม่")
+                                Icon(Icons.Rounded.Refresh, contentDescription = tr("ลองใหม่", "Retry"))
                             }
                             IconButton(onClick = onRemove, modifier = Modifier.size(36.dp)) {
-                                Icon(Icons.Rounded.DeleteOutline, contentDescription = "ลบประวัติ", tint = ext.mutedText)
+                                Icon(
+                                    Icons.Rounded.DeleteOutline,
+                                    contentDescription = tr("ลบประวัติ", "Remove"),
+                                    tint = ext.mutedText,
+                                )
                             }
                         }
                     }

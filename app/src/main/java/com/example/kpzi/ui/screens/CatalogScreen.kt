@@ -56,6 +56,8 @@ import com.example.kpzi.ui.components.CompactModRow
 import com.example.kpzi.ui.components.IosSquircleIcon
 import com.example.kpzi.ui.components.KpziCard
 import com.example.kpzi.ui.components.StatusPill
+import com.example.kpzi.ui.i18n.isEnglishLanguage
+import com.example.kpzi.ui.i18n.tr
 import com.example.ui.theme.LocalKpziColors
 
 @Composable
@@ -72,6 +74,7 @@ fun CatalogScreen(
     modifier: Modifier = Modifier,
 ) {
     val ext = LocalKpziColors.current
+    val isEnglish = isEnglishLanguage()
     var searchText by remember { mutableStateOf(state.query) }
     val listState = rememberLazyListState()
 
@@ -100,7 +103,7 @@ fun CatalogScreen(
         ) {
             Column {
                 Text(
-                    text = "คลังมอด",
+                    text = tr("คลังมอด", "Mod Catalog"),
                     style = MaterialTheme.typography.headlineMedium,
                 )
                 Text(
@@ -111,7 +114,7 @@ fun CatalogScreen(
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatusPill(
-                    text = quotaState.status.labelTh,
+                    text = quotaState.status.label(isEnglish),
                     containerColor = MaterialTheme.colorScheme.surface,
                     contentColor = MaterialTheme.colorScheme.primary,
                 )
@@ -141,7 +144,10 @@ fun CatalogScreen(
                 .testTag("catalog_search_input"),
             placeholder = {
                 Text(
-                    text = "ค้นหาชื่อมอด, Mod ID หรือวางลิงก์ Nexus...",
+                    text = tr(
+                        "ค้นหาชื่อมอด, Mod ID หรือวางลิงก์ Nexus...",
+                        "Search mod name, Mod ID, or Nexus URL...",
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = ext.mutedText,
                 )
@@ -155,7 +161,12 @@ fun CatalogScreen(
                         searchText = ""
                         onQueryChange("")
                     }) {
-                        Icon(Icons.Rounded.Cancel, contentDescription = "ล้างคำค้นหา", tint = ext.mutedText, modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Rounded.Cancel,
+                            contentDescription = tr("ล้างคำค้นหา", "Clear search"),
+                            tint = ext.mutedText,
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
             },
@@ -181,7 +192,7 @@ fun CatalogScreen(
                     onClick = { onCategorySelect(category) },
                     label = {
                         Text(
-                            text = category.labelTh,
+                            text = category.label(isEnglish),
                             style = MaterialTheme.typography.labelMedium,
                         )
                     },
@@ -213,14 +224,17 @@ fun CatalogScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "แสดงข้อมูลแคชออฟไลน์ (${state.items.size} รายการ)",
+                        text = tr(
+                            "แสดงข้อมูลแคชออฟไลน์ (${state.items.size} รายการ)",
+                            "Showing offline cache (${state.items.size} items)",
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         color = ext.warning,
                     )
                     IconButton(onClick = onRefresh, modifier = Modifier.size(28.dp)) {
                         Icon(
                             imageVector = Icons.Rounded.Refresh,
-                            contentDescription = "ลองโหลดใหม่",
+                            contentDescription = tr("ลองโหลดใหม่", "Retry"),
                             tint = ext.warning,
                             modifier = Modifier.size(16.dp),
                         )
@@ -233,7 +247,11 @@ fun CatalogScreen(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     CircularProgressIndicator()
-                    Text("กำลังโหลดรายการมอดจาก Nexus Mods...", style = MaterialTheme.typography.bodySmall, color = ext.mutedText)
+                    Text(
+                        text = tr("กำลังโหลดรายการมอดจาก Nexus Mods...", "Loading mods from Nexus Mods..."),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ext.mutedText,
+                    )
                 }
             }
         } else if (state.items.isEmpty()) {
@@ -258,7 +276,7 @@ fun CatalogScreen(
                             contentScale = ContentScale.Crop,
                         )
                         Text(
-                            text = "ไม่พบมอดที่ตรงกับเงื่อนไข",
+                            text = tr("ไม่พบมอดที่ตรงกับเงื่อนไข", "No matching mods found"),
                             style = MaterialTheme.typography.titleMedium,
                         )
                         if (!state.errorMessage.isNullOrBlank()) {
@@ -269,7 +287,7 @@ fun CatalogScreen(
                             )
                         }
                         Button(onClick = onRefresh, shape = RoundedCornerShape(12.dp)) {
-                            Text("ลองค้นหาอีกครั้ง")
+                            Text(tr("ลองค้นหาอีกครั้ง", "Search Again"))
                         }
                     }
                 }

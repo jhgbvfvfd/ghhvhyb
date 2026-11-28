@@ -30,20 +30,31 @@ import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.FolderZip
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,10 +72,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import coil.compose.SubcomposeAsyncImage
 import com.example.R
+import com.example.kpzi.PendingZipPassword
 import com.example.kpzi.domain.model.CompatibilityLevel
 import com.example.kpzi.domain.model.InstalledMod
 import com.example.kpzi.domain.model.NexusModSummary
 import com.example.kpzi.engine.installer.PendingModInstall
+import com.example.kpzi.ui.i18n.isEnglishLanguage
+import com.example.kpzi.ui.i18n.tr
 import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.theme.LocalKpziColors
 import java.util.Locale
@@ -216,13 +230,14 @@ fun StatusPill(
 @Composable
 fun CompatibilityBadge(level: CompatibilityLevel, modifier: Modifier = Modifier) {
     val ext = LocalKpziColors.current
+    val isEnglish = isEnglishLanguage()
     val (bg, fg) = when (level) {
         CompatibilityLevel.VERIFIED_WORKING -> ext.successContainer to ext.success
         CompatibilityLevel.LIKELY_COMPATIBLE -> ext.infoContainer to ext.info
         CompatibilityLevel.UNVERIFIED -> ext.accentContainer to ext.onAccentContainer
         CompatibilityLevel.INCOMPATIBLE -> ext.errorContainer to ext.error
     }
-    StatusPill(text = level.labelTh, containerColor = bg, contentColor = fg, modifier = modifier)
+    StatusPill(text = level.label(isEnglish), containerColor = bg, contentColor = fg, modifier = modifier)
 }
 
 @Composable
@@ -314,7 +329,7 @@ fun CompactModRow(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = mod.summary.ifBlank { "โดย ${mod.author}" },
+                    text = mod.summary.ifBlank { tr("โดย ${mod.author}", "By ${mod.author}") },
                     style = MaterialTheme.typography.bodySmall,
                     color = ext.mutedText,
                     maxLines = 1,
@@ -363,7 +378,7 @@ fun CompactModRow(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.ArrowDownward,
-                    contentDescription = "ดาวน์โหลด ${mod.name}",
+                    contentDescription = tr("ดาวน์โหลด ${mod.name}", "Download ${mod.name}"),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(19.dp),
                 )
@@ -394,7 +409,11 @@ fun KpziModInstallConfirmDialog(
         },
         title = {
             Text(
-                text = if (pending.isUpdate) "ยืนยันการอัปเดตมอด" else "ยืนยันการติดตั้งมอด",
+                text = if (pending.isUpdate) {
+                    tr("ยืนยันการอัปเดตมอด", "Confirm Mod Update")
+                } else {
+                    tr("ยืนยันการติดตั้งมอด", "Confirm Mod Install")
+                },
                 style = MaterialTheme.typography.titleLarge,
             )
         },
@@ -410,13 +429,16 @@ fun KpziModInstallConfirmDialog(
                     color = ext.mutedText,
                 )
                 Text(
-                    text = "ผู้พัฒนา: ${pending.manifest.author}",
+                    text = tr("ผู้พัฒนา: ${pending.manifest.author}", "Author: ${pending.manifest.author}"),
                     style = MaterialTheme.typography.bodySmall,
                     color = ext.mutedText,
                 )
                 if (pending.isUpdate && pending.existingVersion != null) {
                     StatusPill(
-                        text = "อัปเดตจาก v${pending.existingVersion} → v${pending.manifest.version} (สำรองเดิมอัตโนมัติ)",
+                        text = tr(
+                            "อัปเดตจาก v${pending.existingVersion} → v${pending.manifest.version} (สำรองเดิมอัตโนมัติ)",
+                            "Updating v${pending.existingVersion} → v${pending.manifest.version} (auto-backed up)",
+                        ),
                         containerColor = ext.infoContainer,
                         contentColor = ext.info,
                     )
@@ -439,7 +461,10 @@ fun KpziModInstallConfirmDialog(
                                 modifier = Modifier.size(18.dp),
                             )
                             Text(
-                                text = "คำเตือนความปลอดภัย: มอดนี้มีไฟล์ DLL (${pending.manifest.entryDll ?: "*.dll"}) ซึ่งสามารถรันโค้ดได้ กรุณาติดตั้งเฉพาะจากแหล่งที่เชื่อถือได้เท่านั้น",
+                                text = tr(
+                                    "คำเตือนความปลอดภัย: มอดนี้มีไฟล์ DLL (${pending.manifest.entryDll ?: "*.dll"}) ซึ่งสามารถรันโค้ดได้ กรุณาติดตั้งเฉพาะจากแหล่งที่เชื่อถือได้เท่านั้น",
+                                    "Security Notice: This mod includes a DLL (${pending.manifest.entryDll ?: "*.dll"}) that executes code. Only install mods from trusted sources.",
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = ext.warning,
                             )
@@ -462,7 +487,10 @@ fun KpziModInstallConfirmDialog(
                                 modifier = Modifier.size(18.dp),
                             )
                             Text(
-                                text = "ยังขาด Dependencies: ${pending.missingDependencies.joinToString()}",
+                                text = tr(
+                                    "ยังขาด Dependencies: ${pending.missingDependencies.joinToString()}",
+                                    "Missing Dependencies: ${pending.missingDependencies.joinToString()}",
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = ext.error,
                             )
@@ -477,12 +505,114 @@ fun KpziModInstallConfirmDialog(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.testTag("confirm_install_button"),
             ) {
-                Text(if (pending.isUpdate) "อัปเดตมอด" else "ยืนยันติดตั้ง")
+                Text(if (pending.isUpdate) tr("อัปเดตมอด", "Update Mod") else tr("ยืนยันติดตั้ง", "Install"))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("ยกเลิก")
+                Text(tr("ยกเลิก", "Cancel"))
+            }
+        },
+    )
+}
+
+@Composable
+fun KpziZipPasswordDialog(
+    pending: PendingZipPassword,
+    onSubmit: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val ext = LocalKpziColors.current
+    var password by remember(pending.archiveFile.absolutePath) { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = { if (!pending.isExtracting) onDismiss() },
+        containerColor = MaterialTheme.colorScheme.surface,
+        icon = {
+            IosSquircleIcon(
+                icon = Icons.Rounded.Lock,
+                containerColor = ext.accentContainer,
+                iconTint = ext.accent,
+                size = 44.dp,
+                iconSize = 23.dp,
+                cornerRadius = 13.dp,
+            )
+        },
+        title = {
+            Text(
+                text = tr("ไฟล์ ZIP นี้มีรหัสผ่าน", "Password-Protected ZIP"),
+                style = MaterialTheme.typography.titleLarge,
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = tr(
+                        "ไฟล์ ${pending.sourceLabel} ถูกเข้ารหัสไว้ กรุณากรอกรหัสผ่านแล้วกดตกลงเพื่อแตกไฟล์และติดตั้งมอด",
+                        "${pending.sourceLabel} is encrypted. Enter the password and tap OK to extract and install the mod.",
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ext.mutedText,
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    enabled = !pending.isExtracting,
+                    singleLine = true,
+                    label = { Text(tr("รหัสผ่านไฟล์ ZIP", "ZIP Password")) },
+                    placeholder = { Text(tr("กรอกรหัสผ่าน...", "Enter password...")) },
+                    isError = !pending.errorMessage.isNullOrBlank(),
+                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { showPassword = !showPassword }) {
+                            Icon(
+                                imageVector = if (showPassword) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                contentDescription = if (showPassword) tr("ซ่อนรหัสผ่าน", "Hide password") else tr("แสดงรหัสผ่าน", "Show password"),
+                            )
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("zip_password_input"),
+                )
+                if (!pending.errorMessage.isNullOrBlank()) {
+                    Text(
+                        text = pending.errorMessage,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = ext.error,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSubmit(password) },
+                enabled = !pending.isExtracting,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.testTag("zip_password_confirm_button"),
+            ) {
+                if (pending.isExtracting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(tr("กำลังแตกไฟล์...", "Extracting..."))
+                } else {
+                    Text(tr("ตกลง", "OK"))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !pending.isExtracting,
+                modifier = Modifier.testTag("zip_password_cancel_button"),
+            ) {
+                Text(tr("ยกเลิก", "Cancel"))
             }
         },
     )
@@ -510,7 +640,7 @@ fun KpziInstallSuccessDialog(
             ) {
                 Image(
                     painter = painterResource(R.drawable.img_mascot_chick),
-                    contentDescription = "มาสคอตไก่ฟาร์ม",
+                    contentDescription = tr("มาสคอตไก่ฟาร์ม", "Farm Chick Mascot"),
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(100.dp)
@@ -524,7 +654,7 @@ fun KpziInstallSuccessDialog(
                     modifier = Modifier.size(32.dp),
                 )
                 Text(
-                    text = "ติดตั้งมอดสำเร็จ!",
+                    text = tr("ติดตั้งมอดสำเร็จ!", "Mod Installed!"),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
@@ -565,7 +695,7 @@ fun KpziInstallSuccessDialog(
                 ) {
                     Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("เปิดเกมเลย")
+                    Text(tr("เปิดเกมเลย", "Launch Game"))
                 }
                 OutlinedButton(
                     onClick = onBackToCatalog,
@@ -576,7 +706,7 @@ fun KpziInstallSuccessDialog(
                     shape = RoundedCornerShape(14.dp),
                     border = BorderStroke(0.8.dp, ext.border),
                 ) {
-                    Text("กลับไปที่คลังมอด")
+                    Text(tr("กลับไปที่คลังมอด", "Back to Catalog"))
                 }
             }
         }
@@ -651,7 +781,10 @@ fun KpziSplashOverlay(visible: Boolean) {
                         )
                     }
                     Text(
-                        text = "จัดการมอด Stardew Valley\nง่าย ครบ จบในแอปเดียว",
+                        text = tr(
+                            "จัดการมอด Stardew Valley\nง่าย ครบ จบในแอปเดียว",
+                            "Manage Stardew Valley Mods\nSimple, Complete, All-in-One",
+                        ),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                         textAlign = TextAlign.Center,
@@ -674,7 +807,7 @@ fun KpziSplashOverlay(visible: Boolean) {
                         trackColor = ext.border,
                     )
                     Text(
-                        text = "กำลังเริ่มต้น...",
+                        text = tr("กำลังเริ่มต้น...", "Starting up..."),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
@@ -699,9 +832,13 @@ fun formatFileSize(bytes: Long): String {
     return String.format(Locale.US, "%.2f GB", mb / 1024.0)
 }
 
-fun formatEta(seconds: Long?): String {
+fun formatEta(seconds: Long?, isEnglish: Boolean = false): String {
     if (seconds == null || seconds <= 0L) return ""
     val mins = seconds / 60
     val secs = seconds % 60
-    return if (mins > 0) "เหลือ ${mins}น. ${secs}วิ." else "เหลือ ${secs}วิ."
+    return if (isEnglish) {
+        if (mins > 0) "${mins}m ${secs}s left" else "${secs}s left"
+    } else {
+        if (mins > 0) "เหลือ ${mins}น. ${secs}วิ." else "เหลือ ${secs}วิ."
+    }
 }

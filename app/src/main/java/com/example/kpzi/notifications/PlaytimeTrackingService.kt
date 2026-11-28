@@ -9,6 +9,7 @@ import android.os.IBinder
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.example.kpzi.KpziContainer
+import com.example.kpzi.ui.i18n.AppLanguage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -56,6 +57,8 @@ class PlaytimeTrackingService : Service() {
                 val explicitStart = intent?.getLongExtra(EXTRA_START_EPOCH_MS, 0L)?.takeIf { it > 0L }
                 serviceScope.launch(Dispatchers.IO) {
                     val settings = container.settingsPreferences.settingsFlow.first()
+                    val english = settings.appLanguage == AppLanguage.ENGLISH
+                    container.notificationHelper.isEnglish = english
                     val sessionStart = settings.activePlaytimeStartMs
                         ?: container.settingsPreferences.startPlaytimeSession(explicitStart ?: System.currentTimeMillis())
                     val totalBefore = settings.totalPlaytimeSeconds
@@ -63,6 +66,7 @@ class PlaytimeTrackingService : Service() {
                     val initialNotification = container.notificationHelper.buildPlaytimeNotification(
                         accumulatedBeforeSessionSeconds = totalBefore,
                         sessionStartMs = sessionStart,
+                        english = english,
                     )
                     runCatching {
                         val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -93,10 +97,13 @@ class PlaytimeTrackingService : Service() {
             while (isActive) {
                 delay(15_000L)
                 val settings = container.settingsPreferences.settingsFlow.first()
+                val english = settings.appLanguage == AppLanguage.ENGLISH
+                container.notificationHelper.isEnglish = english
                 val activeStart = settings.activePlaytimeStartMs ?: break
                 container.notificationHelper.notifyPlaytimeUpdate(
                     accumulatedBeforeSessionSeconds = settings.totalPlaytimeSeconds,
                     sessionStartMs = activeStart.coerceAtMost(sessionStartMs),
+                    english = english,
                 )
             }
         }

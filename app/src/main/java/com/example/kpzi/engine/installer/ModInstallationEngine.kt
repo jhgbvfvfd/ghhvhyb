@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import net.lingala.zip4j.ZipFile as Zip4jFile
+import net.lingala.zip4j.exception.ZipException
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedInputStream
@@ -23,9 +25,20 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.util.zip.ZipEntry
-import java.util.zip.ZipFile
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+
+sealed interface ZipStageResult {
+    data class Ready(val pending: PendingModInstall) : ZipStageResult
+    data class PasswordRequired(
+        val archiveFile: File,
+        val sourceLabel: String,
+        val isOwnedTempFile: Boolean,
+        val errorMessage: String? = null,
+    ) : ZipStageResult
+}
+
+internal class ZipPasswordRequiredException(message: String? = null) : RuntimeException(message)
 
 data class PendingModInstall(
     val sourceLabel: String,
@@ -103,27 +116,99 @@ class ModInstallationEngine(
         result
     }
 
-    suspend fun stageZipUri(uri: Uri): Result<PendingModInstall> = withContext(Dispatchers.IO) {
-        runCatching {
+    suspend fun stageZipUri(uri: Uri, password: String? = null): Result<ZipStageResult> =
+        withContext(Dispatchers.IO) {
             val tempZip = File(context.cacheDir, "stage_${System.currentTimeMillis()}.zip")
-            try {
+            val copied = runCatching {
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     FileOutputStream(tempZip).use { output ->
                         copyBounded(input, output, MAX_ARCHIVE_BYTES)
                     }
                 } ?: error("ไม่สามารถเปิดไฟล์ ZIP ที่เลือกได้")
-                stageZipFileInternal(tempZip, uri.lastPathSegment ?: "mod_archive.zip")
-            } finally {
+            }
+            if (copied.isFailure) {
                 tempZip.delete()
+                return@withContext Result.failure(copied.exceptionOrNull()!!)
+            }
+
+            val label = uri.lastPathSegment?.substringAfterLast('/')?.ifBlank { "mod_archive.zip" } ?: "mod_archive.zip"
+            stageArchivedZipFile(
+                archiveFile = tempZip,
+                sourceLabel = label,
+                password = password,
+                isOwnedTempFile = true,
+            )
+        }
+
+    suspend fun stageLocalZipFile(file: File, password: String? = null): Result<ZipStageResult> =
+        withContext(Dispatchers.IO) {
+            if (!file.exists() || file.length() <= 0L) {
+                return@withContext Result.failure(IllegalArgumentException("ไม่พบไฟล์ ZIP หรือไฟล์ว่างเปล่า"))
+            }
+            if (file.length() > MAX_ARCHIVE_BYTES) {
+                return@withContext Result.failure(IllegalArgumentException("ขนาดไฟล์ ZIP เกินขีดจำกัดความปลอดภัย (500 MB)"))
+            }
+            stageArchivedZipFile(
+                archiveFile = file,
+                sourceLabel = file.name,
+                password = password,
+                isOwnedTempFile = false,
+            )
+        }
+
+    suspend fun stageArchivedZipFile(
+        archiveFile: File,
+        sourceLabel: String,
+        password: String?,
+        isOwnedTempFile: Boolean,
+    ): Result<ZipStageResult> = withContext(Dispatchers.IO) {
+        val result = runCatching {
+            val z4j = Zip4jFile(archiveFile)
+            if (!z4j.isValidZipFile) {
+                error("ไฟล์ ZIP เสียหายหรือไม่ใช่รูปแบบไฟล์บีบอัด ZIP ที่รองรับ")
+            }
+            if (z4j.isEncrypted && password.isNullOrEmpty()) {
+                return@runCatching ZipStageResult.PasswordRequired(
+                    archiveFile = archiveFile,
+                    sourceLabel = sourceLabel,
+                    isOwnedTempFile = isOwnedTempFile,
+                    errorMessage = null,
+                )
+            }
+
+            val stageRoot = File(context.cacheDir, "stage_zip_${System.currentTimeMillis()}").apply {
+                mkdirs()
+            }
+            try {
+                extractZipSafely(archiveFile, stageRoot, password)
+                val pending = buildPendingFromStaging(stageRoot, sourceLabel)
+                ZipStageResult.Ready(pending)
+            } catch (e: ZipPasswordRequiredException) {
+                stageRoot.deleteRecursively()
+                ZipStageResult.PasswordRequired(
+                    archiveFile = archiveFile,
+                    sourceLabel = sourceLabel,
+                    isOwnedTempFile = isOwnedTempFile,
+                    errorMessage = e.message ?: "รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง",
+                )
+            } catch (t: Throwable) {
+                stageRoot.deleteRecursively()
+                throw t
             }
         }
+
+        if (isOwnedTempFile) {
+            val outcome = result.getOrNull()
+            if (outcome !is ZipStageResult.PasswordRequired) {
+                archiveFile.delete()
+            }
+        }
+        result
     }
 
-    suspend fun stageLocalZipFile(file: File): Result<PendingModInstall> = withContext(Dispatchers.IO) {
-        runCatching {
-            require(file.exists() && file.length() > 0L) { "ไม่พบไฟล์ ZIP หรือไฟล์ว่างเปล่า" }
-            require(file.length() <= MAX_ARCHIVE_BYTES) { "ขนาดไฟล์ ZIP เกินขีดจำกัดความปลอดภัย (500 MB)" }
-            stageZipFileInternal(file, file.name)
+    fun discardPasswordPrompt(archiveFile: File, isOwnedTempFile: Boolean) {
+        if (isOwnedTempFile) {
+            runCatching { archiveFile.delete() }
         }
     }
 
@@ -140,19 +225,6 @@ class ModInstallationEngine(
                 stageRoot.deleteRecursively()
                 throw t
             }
-        }
-    }
-
-    private fun stageZipFileInternal(zipFile: File, label: String): PendingModInstall {
-        val stageRoot = File(context.cacheDir, "stage_zip_${System.currentTimeMillis()}").apply {
-            mkdirs()
-        }
-        try {
-            extractZipSafely(zipFile, stageRoot)
-            return buildPendingFromStaging(stageRoot, label)
-        } catch (t: Throwable) {
-            stageRoot.deleteRecursively()
-            throw t
         }
     }
 
@@ -299,50 +371,8 @@ class ModInstallationEngine(
         deleted
     }
 
-    private fun extractZipSafely(zipFile: File, destRoot: File) {
-        val canonicalRoot = destRoot.canonicalFile
-        var entryCount = 0
-        var totalUncompressedBytes = 0L
-
-        ZipInputStream(BufferedInputStream(FileInputStream(zipFile))).use { zis ->
-            var entry: ZipEntry? = zis.nextEntry
-            while (entry != null) {
-                entryCount++
-                if (entryCount > MAX_ZIP_ENTRIES) {
-                    error("ตรวจพบจำนวนไฟล์ใน ZIP มากผิดปกติ (ป้องกัน ZIP Bomb)")
-                }
-
-                val outFile = File(canonicalRoot, entry.name).canonicalFile
-                if (!outFile.path.startsWith(canonicalRoot.path + File.separator) && outFile != canonicalRoot) {
-                    error("ตรวจพบ Path Traversal ที่ไม่ปลอดภัยในไฟล์ ZIP: ${entry.name}")
-                }
-
-                if (entry.isDirectory) {
-                    outFile.mkdirs()
-                } else {
-                    outFile.parentFile?.mkdirs()
-                    val buffer = ByteArray(8192)
-                    var entryBytes = 0L
-                    FileOutputStream(outFile).use { fos ->
-                        while (true) {
-                            val read = zis.read(buffer)
-                            if (read <= 0) break
-                            entryBytes += read
-                            totalUncompressedBytes += read
-                            if (entryBytes > MAX_SINGLE_ENTRY_BYTES || totalUncompressedBytes > MAX_TOTAL_UNCOMPRESSED_BYTES) {
-                                error("ไฟล์แตกออกมามีขนาดใหญ่ผิดปกติ (ป้องกัน ZIP Bomb)")
-                            }
-                            fos.write(buffer, 0, read)
-                        }
-                    }
-                }
-                zis.closeEntry()
-                entry = zis.nextEntry
-            }
-        }
-        if (entryCount == 0) {
-            error("ไฟล์ ZIP เสียหายหรือไม่มีข้อมูลภายใน")
-        }
+    private fun extractZipSafely(zipFile: File, destRoot: File, password: String? = null) {
+        extractZipArchiveSafely(zipFile, destRoot, password)
     }
 
     private fun copyDocumentTreeRecursive(
@@ -534,10 +564,98 @@ class ModInstallationEngine(
     private fun dirSize(dir: File): Long =
         dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
 
-    private companion object {
-        const val MAX_ZIP_ENTRIES = 5000
-        const val MAX_SINGLE_ENTRY_BYTES = 250L * 1024L * 1024L
-        const val MAX_TOTAL_UNCOMPRESSED_BYTES = 800L * 1024L * 1024L
-        const val MAX_ARCHIVE_BYTES = 500L * 1024L * 1024L
+    companion object {
+        private const val MAX_ZIP_ENTRIES = 5000
+        private const val MAX_SINGLE_ENTRY_BYTES = 250L * 1024L * 1024L
+        private const val MAX_TOTAL_UNCOMPRESSED_BYTES = 800L * 1024L * 1024L
+        private const val MAX_ARCHIVE_BYTES = 500L * 1024L * 1024L
+
+        internal fun extractZipArchiveSafely(
+            zipFile: File,
+            destRoot: File,
+            password: String? = null,
+        ) {
+            val canonicalRoot = destRoot.canonicalFile
+            val z4j = Zip4jFile(zipFile)
+            if (z4j.isEncrypted && password.isNullOrEmpty()) {
+                throw ZipPasswordRequiredException("ไฟล์ ZIP มีรหัสผ่าน กรุณากรอกรหัสผ่าน")
+            }
+            if (!password.isNullOrEmpty()) {
+                z4j.setPassword(password.toCharArray())
+            }
+
+            val headers = try {
+                z4j.fileHeaders
+            } catch (e: ZipException) {
+                if (e.type == ZipException.Type.WRONG_PASSWORD) {
+                    throw ZipPasswordRequiredException("รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง")
+                }
+                throw e
+            }
+
+            if (headers.isEmpty()) {
+                error("ไฟล์ ZIP เสียหายหรือไม่มีข้อมูลภายใน")
+            }
+            if (headers.size > MAX_ZIP_ENTRIES) {
+                error("ตรวจพบจำนวนไฟล์ใน ZIP มากผิดปกติ (ป้องกัน ZIP Bomb)")
+            }
+
+            var totalUncompressedBytes = 0L
+            for (header in headers) {
+                val normalizedName = header.fileName.replace('\\', '/').trimStart('/')
+                if (normalizedName.isBlank()) continue
+
+                val outFile = File(canonicalRoot, normalizedName).canonicalFile
+                if (!outFile.path.startsWith(canonicalRoot.path + File.separator) && outFile != canonicalRoot) {
+                    error("ตรวจพบ Path Traversal ที่ไม่ปลอดภัยในไฟล์ ZIP: ${header.fileName}")
+                }
+
+                if (header.isDirectory) {
+                    outFile.mkdirs()
+                    continue
+                }
+
+                if (header.uncompressedSize > MAX_SINGLE_ENTRY_BYTES) {
+                    error("ไฟล์แตกออกมามีขนาดใหญ่ผิดปกติ (ป้องกัน ZIP Bomb)")
+                }
+
+                outFile.parentFile?.mkdirs()
+                try {
+                    z4j.getInputStream(header).use { entryStream ->
+                        val buffer = ByteArray(8192)
+                        var entryBytes = 0L
+                        FileOutputStream(outFile).use { fos ->
+                            while (true) {
+                                val read = entryStream.read(buffer)
+                                if (read <= 0) break
+                                entryBytes += read
+                                totalUncompressedBytes += read
+                                if (entryBytes > MAX_SINGLE_ENTRY_BYTES || totalUncompressedBytes > MAX_TOTAL_UNCOMPRESSED_BYTES) {
+                                    error("ไฟล์แตกออกมามีขนาดใหญ่ผิดปกติ (ป้องกัน ZIP Bomb)")
+                                }
+                                fos.write(buffer, 0, read)
+                            }
+                        }
+                    }
+                } catch (e: ZipException) {
+                    val msg = e.message.orEmpty().lowercase()
+                    if (e.type == ZipException.Type.WRONG_PASSWORD ||
+                        e.type == ZipException.Type.CHECKSUM_MISMATCH ||
+                        msg.contains("password") ||
+                        msg.contains("mac") ||
+                        msg.contains("crc")
+                    ) {
+                        throw ZipPasswordRequiredException("รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง")
+                    }
+                    throw e
+                } catch (t: Throwable) {
+                    val msg = t.message.orEmpty().lowercase()
+                    if (z4j.isEncrypted && (msg.contains("password") || msg.contains("crc") || msg.contains("mac") || msg.contains("wrong"))) {
+                        throw ZipPasswordRequiredException("รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง")
+                    }
+                    throw t
+                }
+            }
+        }
     }
 }

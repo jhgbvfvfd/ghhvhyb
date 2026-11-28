@@ -61,16 +61,20 @@ import com.example.kpzi.domain.model.LogLevel
 import com.example.kpzi.ui.components.IosSquircleIcon
 import com.example.kpzi.ui.components.KpziCard
 import com.example.kpzi.ui.components.StatusPill
+import com.example.kpzi.ui.i18n.isEnglishLanguage
+import com.example.kpzi.ui.i18n.tr
 import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.theme.LocalKpziColors
 
-private enum class LogFilterOption(val label: String) {
-    ALL("ทั้งหมด"),
-    ERRORS("ERROR"),
-    WARN("WARN"),
-    INFO("INFO"),
-    DEBUG("DEBUG"),
-    TRACE("TRACE"),
+private enum class LogFilterOption(val labelTh: String, val labelEn: String) {
+    ALL("ทั้งหมด", "All"),
+    ERRORS("ERROR", "ERROR"),
+    WARN("WARN", "WARN"),
+    INFO("INFO", "INFO"),
+    DEBUG("DEBUG", "DEBUG"),
+    TRACE("TRACE", "TRACE");
+
+    fun label(isEnglish: Boolean): String = if (isEnglish) labelEn else labelTh
 }
 
 @Composable
@@ -87,6 +91,8 @@ fun LogsScreen(
     modifier: Modifier = Modifier,
 ) {
     val ext = LocalKpziColors.current
+    val isEnglish = isEnglishLanguage()
+    val copiedToastText = tr("คัดลอกบรรทัด Log แล้ว", "Log line copied")
     val clipboard = LocalClipboardManager.current
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(LogFilterOption.ALL) }
@@ -135,13 +141,16 @@ fun LogsScreen(
             ) {
                 if (onBack != null) {
                     IconButton(onClick = onBack, modifier = Modifier.testTag("subscreen_back")) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "ย้อนกลับ")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = tr("ย้อนกลับ", "Back"))
                     }
                 }
                 Column {
-                    Text("ตรวจสอบ Log", style = MaterialTheme.typography.headlineMedium)
+                    Text(tr("ตรวจสอบ Log", "Log Viewer"), style = MaterialTheme.typography.headlineMedium)
                     Text(
-                        text = "$activeLogSource • ${logs.size} รายการ",
+                        text = tr(
+                            "$activeLogSource • ${logs.size} รายการ",
+                            "$activeLogSource • ${logs.size} entries",
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         color = ext.mutedText,
                         maxLines = 1,
@@ -219,7 +228,10 @@ fun LogsScreen(
                 .testTag("log_search_input"),
             placeholder = {
                 Text(
-                    text = "ค้นหาใน Log (ชื่อมอด, Error, ข้อความ)...",
+                    text = tr(
+                        "ค้นหาใน Log (ชื่อมอด, Error, ข้อความ)...",
+                        "Search logs (mod name, error, message)...",
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = ext.mutedText,
                 )
@@ -237,7 +249,7 @@ fun LogsScreen(
                     IconButton(onClick = { searchQuery = "" }) {
                         Icon(
                             imageVector = Icons.Rounded.Cancel,
-                            contentDescription = "ล้างคำค้นหา",
+                            contentDescription = tr("ล้างคำค้นหา", "Clear search"),
                             tint = ext.mutedText,
                             modifier = Modifier.size(18.dp),
                         )
@@ -264,7 +276,7 @@ fun LogsScreen(
             ) {
                 if (errorCount > 0) {
                     StatusPill(
-                        text = "พบ Error $errorCount รายการ",
+                        text = tr("พบ Error $errorCount รายการ", "$errorCount errors"),
                         containerColor = ext.errorContainer,
                         contentColor = ext.error,
                         icon = Icons.Rounded.ErrorOutline,
@@ -273,7 +285,7 @@ fun LogsScreen(
                 }
                 if (warnCount > 0) {
                     StatusPill(
-                        text = "คำเตือน $warnCount รายการ",
+                        text = tr("คำเตือน $warnCount รายการ", "$warnCount warnings"),
                         containerColor = ext.warningContainer,
                         contentColor = ext.warning,
                         icon = Icons.Rounded.WarningAmber,
@@ -305,7 +317,7 @@ fun LogsScreen(
                     onClick = { selectedFilter = option },
                     label = {
                         Text(
-                            text = "${option.label} ($count)",
+                            text = "${option.label(isEnglish)} ($count)",
                             style = MaterialTheme.typography.labelMedium,
                         )
                     },
@@ -345,11 +357,18 @@ fun LogsScreen(
                             cornerRadius = 16.dp,
                         )
                         Text(
-                            text = if (searchQuery.isNotBlank()) "ไม่พบ Log ที่ตรงกับ \"$searchQuery\"" else "ไม่มีรายการ Log ในตัวกรองนี้",
+                            text = if (searchQuery.isNotBlank()) {
+                                tr("ไม่พบ Log ที่ตรงกับ \"$searchQuery\"", "No logs matching \"$searchQuery\"")
+                            } else {
+                                tr("ไม่มีรายการ Log ในตัวกรองนี้", "No log entries in this filter")
+                            },
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
-                            text = "เลือกไฟล์ SMAPI-latest.txt จากเครื่องเพื่อตรวจสอบ Error และวิเคราะห์ปัญหาของมอด",
+                            text = tr(
+                                "เลือกไฟล์ SMAPI-latest.txt จากเครื่องเพื่อตรวจสอบ Error และวิเคราะห์ปัญหาของมอด",
+                                "Import SMAPI-latest.txt from your device to inspect errors and troubleshoot mods.",
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = ext.mutedText,
                         )
@@ -357,7 +376,7 @@ fun LogsScreen(
                             Button(onClick = onImportLog, shape = RoundedCornerShape(12.dp)) {
                                 Icon(Icons.Rounded.UploadFile, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("เลือก SMAPI Log")
+                                Text(tr("เลือก SMAPI Log", "Import SMAPI Log"))
                             }
                             OutlinedButton(
                                 onClick = onReloadLogs,
@@ -366,7 +385,7 @@ fun LogsScreen(
                             ) {
                                 Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("รีเฟรช")
+                                Text(tr("รีเฟรช", "Refresh"))
                             }
                         }
                     }
@@ -393,7 +412,7 @@ fun LogsScreen(
                             .clickable {
                                 val text = "[${entry.timestamp} ${entry.level.tag} ${entry.source}] ${entry.message}"
                                 clipboard.setText(AnnotatedString(text))
-                                onCopyMessage("คัดลอกบรรทัด Log แล้ว")
+                                onCopyMessage(copiedToastText)
                             },
                         shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.surface,
@@ -445,7 +464,7 @@ fun LogsScreen(
                                     )
                                     Icon(
                                         imageVector = Icons.Rounded.ContentCopy,
-                                        contentDescription = "คัดลอก",
+                                        contentDescription = tr("คัดลอก", "Copy"),
                                         tint = ext.mutedText,
                                         modifier = Modifier.size(14.dp),
                                     )

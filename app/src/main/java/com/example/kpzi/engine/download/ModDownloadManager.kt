@@ -302,7 +302,12 @@ class ModDownloadManager(
         val hex = digest.digest().joinToString("") { "%02x".format(it) }
         val zipOk = runCatching {
             ZipFile(file).use { zip -> zip.entries().hasMoreElements() }
-        }.getOrDefault(false)
+        }.getOrElse {
+            runCatching {
+                val z4j = net.lingala.zip4j.ZipFile(file)
+                z4j.isValidZipFile && z4j.fileHeaders.isNotEmpty()
+            }.getOrDefault(false)
+        }
         return hex to zipOk
     }
 }

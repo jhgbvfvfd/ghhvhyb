@@ -19,6 +19,8 @@ import com.example.kpzi.engine.loader.GameLauncher
 import com.example.kpzi.engine.loader.LogManager
 import com.example.kpzi.engine.loader.ModRuntime
 import com.example.kpzi.engine.loader.SmapiIntegration
+import com.example.kpzi.engine.multiplayer.MultiplayerLobbyEngine
+import com.example.kpzi.notifications.DownloadQueueMonitorWorker
 import com.example.kpzi.notifications.KpziNotificationHelper
 import com.example.kpzi.notifications.ModDownloadService
 
@@ -60,6 +62,7 @@ class KpziContainer(context: Context) {
         onBackgroundStateChanged = { isActive ->
             if (isActive) {
                 ModDownloadService.start(appContext)
+                DownloadQueueMonitorWorker.enqueueQueueMonitor(appContext)
             }
         },
         onDownloadOutcome = { task, isSuccess ->
@@ -75,6 +78,11 @@ class KpziContainer(context: Context) {
         context = appContext,
         assetManager = assetManager,
         logManager = logManager,
+    )
+
+    val multiplayerLobbyEngine = MultiplayerLobbyEngine(
+        context = appContext,
+        multiplayerDao = database.multiplayerDao(),
     )
 
     companion object {

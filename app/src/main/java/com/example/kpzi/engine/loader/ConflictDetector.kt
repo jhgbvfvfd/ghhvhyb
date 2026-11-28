@@ -2,18 +2,24 @@ package com.example.kpzi.engine.loader
 
 import com.example.kpzi.domain.model.InstalledMod
 
-enum class ConflictType(val labelTh: String) {
-    DEPENDENCY_LOOP("วนลูปการพึ่งพา (Loop)"),
-    VERSION_MISMATCH("เวอร์ชันไม่ตรงตามกำหนด"),
-    SMAPI_VERSION_MISMATCH("เวอร์ชัน SMAPI ไม่เพียงพอ"),
-    MISSING_DEPENDENCY("ขาดมอดที่จำเป็นต้องใช้"),
-    DISABLED_DEPENDENCY("มอดหลักถูกปิดใช้งาน"),
-    DUPLICATE_UNIQUE_ID("UniqueID ซ้ำซ้อน"),
+enum class ConflictType(val labelTh: String, val labelEn: String) {
+    DEPENDENCY_LOOP("วนลูปการพึ่งพา (Loop)", "Dependency Loop"),
+    VERSION_MISMATCH("เวอร์ชันไม่ตรงตามกำหนด", "Version Mismatch"),
+    SMAPI_VERSION_MISMATCH("เวอร์ชัน SMAPI ไม่เพียงพอ", "SMAPI Version Too Low"),
+    MISSING_DEPENDENCY("ขาดมอดที่จำเป็นต้องใช้", "Missing Dependency"),
+    DISABLED_DEPENDENCY("มอดหลักถูกปิดใช้งาน", "Disabled Dependency"),
+    DUPLICATE_UNIQUE_ID("UniqueID ซ้ำซ้อน", "Duplicate UniqueID"),
+    ;
+
+    fun label(isEnglish: Boolean): String = if (isEnglish) labelEn else labelTh
 }
 
-enum class ConflictSeverity(val labelTh: String) {
-    CRITICAL("วิกฤต"),
-    WARNING("คำเตือน"),
+enum class ConflictSeverity(val labelTh: String, val labelEn: String) {
+    CRITICAL("วิกฤต", "Critical"),
+    WARNING("คำเตือน", "Warning"),
+    ;
+
+    fun label(isEnglish: Boolean): String = if (isEnglish) labelEn else labelTh
 }
 
 data class ModConflictIssue(
@@ -27,7 +33,12 @@ data class ModConflictIssue(
     val actualVersion: String? = null,
     val summaryTh: String,
     val detailTh: String,
-)
+    val summaryEn: String = summaryTh,
+    val detailEn: String = detailTh,
+) {
+    fun summary(isEnglish: Boolean): String = if (isEnglish) summaryEn else summaryTh
+    fun detail(isEnglish: Boolean): String = if (isEnglish) detailEn else detailTh
+}
 
 data class ConflictDetectionReport(
     val scannedModCount: Int,
@@ -80,6 +91,8 @@ class ConflictDetector(
                         relatedModUniqueIds = group.map { it.folderName },
                         summaryTh = "พบ UniqueID ซ้ำกัน ${group.size} โฟลเดอร์",
                         detailTh = "UniqueID '${first.uniqueId}' ปรากฏซ้ำในโฟลเดอร์: $folderNames กรุณาลบชุดที่ซ้ำออกเพื่อไม่ให้ SMAPI ข้ามการโหลด",
+                        summaryEn = "Duplicate UniqueID across ${group.size} folders",
+                        detailEn = "UniqueID '${first.uniqueId}' appears in multiple folders: $folderNames. Remove duplicates so SMAPI can load properly.",
                     ),
                 )
             }
@@ -112,6 +125,8 @@ class ConflictDetector(
                             actualVersion = cleanSmapi,
                             summaryTh = "ต้องการ SMAPI v$minApi ขึ้นไป (ปัจจุบัน v$cleanSmapi)",
                             detailTh = "${mod.manifest.name} (${mod.uniqueId}) ระบุ MinimumApiVersion = $minApi ซึ่งสูงกว่า SMAPI เวอร์ชัน $cleanSmapi",
+                            summaryEn = "Requires SMAPI v$minApi+ (current v$cleanSmapi)",
+                            detailEn = "${mod.manifest.name} (${mod.uniqueId}) specifies MinimumApiVersion = $minApi, which is newer than SMAPI $cleanSmapi.",
                         ),
                     )
                 }
@@ -134,6 +149,8 @@ class ConflictDetector(
                             relatedModUniqueIds = listOf(contentPackHost),
                             summaryTh = "ขาดมอดหลัก ContentPackFor: $contentPackHost",
                             detailTh = "${mod.manifest.name} เป็น Content Pack ที่ต้องอาศัย $contentPackHost ซึ่งยังไม่พบในฐานข้อมูลมอดที่ติดตั้ง",
+                            summaryEn = "Missing ContentPackFor host: $contentPackHost",
+                            detailEn = "${mod.manifest.name} is a Content Pack requiring $contentPackHost, which is not installed.",
                         ),
                     )
                 } else if (mod.isEnabled && !hostMod.isEnabled) {
@@ -147,6 +164,8 @@ class ConflictDetector(
                             relatedModUniqueIds = listOf(hostMod.uniqueId),
                             summaryTh = "มอดหลัก ${hostMod.manifest.name} ถูกปิดใช้งานอยู่",
                             detailTh = "${mod.manifest.name} เปิดใช้งานอยู่ แต่ ContentPackFor (${hostMod.uniqueId}) ถูกปิดใช้งาน",
+                            summaryEn = "Host mod ${hostMod.manifest.name} is disabled",
+                            detailEn = "${mod.manifest.name} is enabled, while its ContentPackFor (${hostMod.uniqueId}) is disabled.",
                         ),
                     )
                 }
@@ -175,6 +194,8 @@ class ConflictDetector(
                                 requiredVersion = dep.minimumVersion,
                                 summaryTh = "ขาดมอดที่ต้องใช้: $depId" + (dep.minimumVersion?.let { " (v$it+)" } ?: ""),
                                 detailTh = "${mod.manifest.name} (${mod.uniqueId}) ระบุ IsRequired=true สำหรับ $depId แต่ไม่พบมอดนี้ในเครื่อง",
+                                summaryEn = "Missing required mod: $depId" + (dep.minimumVersion?.let { " (v$it+)" } ?: ""),
+                                detailEn = "${mod.manifest.name} (${mod.uniqueId}) marks $depId as required, but it is not installed.",
                             ),
                         )
                     }
@@ -192,6 +213,8 @@ class ConflictDetector(
                             relatedModUniqueIds = listOf(targetMod.uniqueId),
                             summaryTh = "มอดที่ต้องใช้ (${targetMod.manifest.name}) ถูกปิดอยู่",
                             detailTh = "${mod.manifest.name} เปิดใช้งานอยู่ แต่ ${targetMod.uniqueId} ถูกปิดใช้งาน",
+                            summaryEn = "Required mod (${targetMod.manifest.name}) is disabled",
+                            detailEn = "${mod.manifest.name} is enabled, while required dependency ${targetMod.uniqueId} is disabled.",
                         ),
                     )
                 }
@@ -214,6 +237,8 @@ class ConflictDetector(
                                 actualVersion = actualVer,
                                 summaryTh = "${targetMod.manifest.name} เวอร์ชันต่ำกว่าที่กำหนด (ต้องการ v$minVer, มี v$actualVer)",
                                 detailTh = "${mod.manifest.name} ต้องการ ${targetMod.uniqueId} อย่างน้อยเวอร์ชัน $minVer แต่ในเครื่องมีเวอร์ชัน $actualVer",
+                                summaryEn = "${targetMod.manifest.name} version too old (needs v$minVer, found v$actualVer)",
+                                detailEn = "${mod.manifest.name} requires ${targetMod.uniqueId} v$minVer or newer, but v$actualVer is installed.",
                             ),
                         )
                     }
@@ -240,6 +265,8 @@ class ConflictDetector(
                     relatedModUniqueIds = idChain,
                     summaryTh = "พบ Dependency Loop: $displayChain",
                     detailTh = "ตรวจพบการพึ่งพาวนรอบใน manifest.json (${idChain.joinToString(" → ")}) ซึ่งอาจทำให้ SMAPI ไม่สามารถจัดลำดับการโหลดมอดได้",
+                    summaryEn = "Dependency Loop detected: $displayChain",
+                    detailEn = "Circular dependency in manifest.json (${idChain.joinToString(" → ")}) may prevent SMAPI from resolving mod load order.",
                 ),
             )
         }
